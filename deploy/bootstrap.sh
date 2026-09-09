@@ -9,9 +9,17 @@
 set -euo pipefail
 
 DOMAIN="${DOMAIN:-}"
-REPO="${REPO:-https://github.com/au71/property.git}"
+# SSH, not HTTPS: the repository is private, so an anonymous HTTPS clone gets a
+# 404 that looks like "repository not found". A read-only deploy key is the
+# right credential for one server — it cannot push, and it is scoped to this
+# repository alone, unlike a personal access token.
+REPO="${REPO:-git@github.com:au71/property.git}"
 BRANCH="${BRANCH:-main}"
 APP_ROOT=/srv/property
+# The key lives with the `property` user, because that is the account that runs
+# every deploy after this one. A key under /root would work exactly once.
+PROPERTY_HOME=/home/property
+DEPLOY_KEY="$PROPERTY_HOME/.ssh/property_deploy"
 
 if [[ $EUID -ne 0 ]]; then
   echo "Run this as root." >&2
@@ -25,7 +33,7 @@ fi
 
 echo "==> Packages"
 apt-get update -qq
-apt-get install -y -qq curl git ca-certificates gnupg ufw openssl
+apt-get install -y -qq curl git ca-certificates gnupg ufw openssl openssh-client sudo
 apt-get install -y -qq build-essential
 
 echo "==> Node 22"
@@ -55,9 +63,51 @@ mkdir -p "$APP_ROOT" /srv/property/data/uploads /srv/property/backups /var/log/c
 chown -R property:property /srv/property
 chown -R caddy:caddy /var/log/caddy
 
+echo "==> Deploy key"
+install -d -m 700 -o property -g property "$PROPERTY_HOME/.ssh"
+if [[ ! -f "$DEPLOY_KEY" ]]; then
+  sudo -u property ssh-keygen -t ed25519 -N "" \
+    -C "property-deploy@$(hostname)" -f "$DEPLOY_KEY" >/dev/null
+fi
+if ! grep -q "property_deploy" "$PROPERTY_HOME/.ssh/config" 2>/dev/null; then
+  cat >> "$PROPERTY_HOME/.ssh/config" <<SSHEOF
+Host github.com
+  IdentityFile $DEPLOY_KEY
+  IdentitiesOnly yes
+SSHEOF
+fi
+ssh-keyscan -t ed25519 github.com >> "$PROPERTY_HOME/.ssh/known_hosts" 2>/dev/null
+sort -u -o "$PROPERTY_HOME/.ssh/known_hosts" "$PROPERTY_HOME/.ssh/known_hosts"
+chown -R property:property "$PROPERTY_HOME/.ssh"
+chmod 600 "$PROPERTY_HOME/.ssh/config" "$PROPERTY_HOME/.ssh/known_hosts"
+
+# Fail early and legibly rather than letting `git clone` produce a confusing
+# "repository not found" for what is really a missing credential.
+if ! sudo -u property ssh -o BatchMode=yes -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+  cat <<KEYEOF
+
+This server cannot reach the repository yet. Add its deploy key:
+
+  https://github.com/au71/property/settings/keys/new
+
+  Title:       $(hostname)
+  Key:         (paste the line below)
+  Write access: leave UNCHECKED — deploys only ever read
+
+$(cat "$DEPLOY_KEY.pub")
+
+Then run this script again. It is safe to re-run.
+
+KEYEOF
+  exit 1
+fi
+
 echo "==> Checkout"
 if [[ ! -d "$APP_ROOT/.git" ]]; then
-  git clone --branch "$BRANCH" "$REPO" "$APP_ROOT.tmp"
+  # Cloned as `property` so every object is owned by the account that will run
+  # `git fetch` from here on; git refuses to operate on a repository owned by
+  # someone else ("dubious ownership").
+  sudo -u property git clone --branch "$BRANCH" "$REPO" "$APP_ROOT.tmp"
   # Move contents in, preserving the data directory created above.
   shopt -s dotglob
   mv "$APP_ROOT.tmp"/* "$APP_ROOT"/

@@ -96,12 +96,13 @@ One small VPS runs everything behind Caddy. See **[deploy/README.md](deploy/READ
 for the runbook; the short version is:
 
 ```bash
-ssh root@your-server
-curl -fsSLO https://raw.githubusercontent.com/au71/property/main/deploy/bootstrap.sh
-DOMAIN=property.example.com bash bootstrap.sh
+scp deploy/bootstrap.sh root@your-server:/root/
+ssh root@your-server 'DOMAIN=property.example.com bash /root/bootstrap.sh'
 ```
 
-Then `sudo -u property /srv/property/deploy/deploy.sh` for every deploy after that.
+The repository is private, so the first run prints a deploy key to add to
+GitHub and asks you to re-run. After that,
+`sudo -u property /srv/property/deploy/deploy.sh` deploys.
 
 SQLite needs a persistent disk and a single writer, so the API cannot go
 serverless. Caddy serves both apps from one domain by path, which means the

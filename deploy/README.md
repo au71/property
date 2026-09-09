@@ -15,11 +15,25 @@ The database and the uploaded photos are files, and they want to stay files.
 You need a fresh Debian 12 or Ubuntu 24.04 server, and a domain whose A record
 already points at its IP — Caddy cannot get a certificate before DNS resolves.
 
+**The repository is private**, so there is no anonymous `curl` of the bootstrap
+script and no anonymous clone. Copy the script up from your own checkout:
+
 ```bash
-ssh root@your-server
-curl -fsSLO https://raw.githubusercontent.com/au71/property/main/deploy/bootstrap.sh
-DOMAIN=property.example.com bash bootstrap.sh
+scp deploy/bootstrap.sh root@your-server:/root/
+ssh root@your-server 'DOMAIN=property.example.com bash /root/bootstrap.sh'
 ```
+
+The first run stops and prints an SSH public key, because the server cannot
+read a private repository yet. Add it as a **read-only deploy key**:
+
+> github.com/au71/property → Settings → Deploy keys → Add deploy key
+> Paste the key. **Leave "Allow write access" unchecked** — a deploy only reads.
+
+Then run the same command again. The script is idempotent; re-running is the
+intended flow, not a recovery step.
+
+A deploy key beats a personal access token here: it is scoped to this one
+repository, it cannot push, and revoking it affects nothing else.
 
 That installs Node 22 and Caddy, creates a `property` service account, clones the
 repo to `/srv/property`, generates a JWT secret, writes both `.env` files, builds
@@ -44,6 +58,12 @@ Finally, allow the deploy user to restart the services:
 sudo install -m 0440 -o root -g root /srv/property/deploy/sudoers.property /etc/sudoers.d/property
 sudo visudo -c
 ```
+
+### Default branch
+
+`main` must be the repository's default branch, or `bootstrap.sh` clones the
+wrong thing. Set it under
+**Settings → General → Default branch** if it is not already.
 
 ## Every deploy after that
 

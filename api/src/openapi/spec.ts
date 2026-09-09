@@ -184,6 +184,17 @@ const LISTING_DETAIL: JsonSchema = {
       },
     },
     enquiryCount: { type: 'integer' },
+    // Present only for the listing's own account and for staff. Absent from
+    // every public response — these are a private individual's details.
+    propertyOwner: {
+      type: 'object',
+      required: ['name'],
+      properties: {
+        name: { type: 'string' },
+        phone: { type: ['string', 'null'] },
+        note: { type: ['string', 'null'] },
+      },
+    },
     expiresAt: { type: ['string', 'null'], format: 'date-time' },
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
@@ -448,6 +459,10 @@ export function buildOpenApiDocument(): JsonSchema {
         post: {
           tags: ['listings'],
           summary: 'Create a listing (starts as DRAFT)',
+          description:
+            'Limited to 5 per account per rolling 24 hours, counted against whoever ' +
+            'creates the listing. An agent can list for an owner who has no account by ' +
+            'supplying propertyOwnerName / propertyOwnerPhone instead of ownerId.',
           security: [{ bearerAuth: [] }],
           requestBody: { required: true, content: json(toSchema(createListingSchema)) },
           responses: {
@@ -651,9 +666,30 @@ export function buildOpenApiDocument(): JsonSchema {
       '/me/listings': {
         get: {
           tags: ['listings'],
-          summary: 'The caller’s own listings, with status counts',
+          summary: 'The caller’s own listings, with status counts and remaining quota',
           security: [{ bearerAuth: [] }],
           responses: { '200': { description: 'OK' }, ...errors('401') },
+        },
+      },
+      '/me/enquiries/unread-count': {
+        get: {
+          tags: ['enquiries'],
+          summary: 'Number of unanswered enquiries',
+          description:
+            'Enquiries are delivered in-app only — no email or SMS — so this drives the ' +
+            'badge that tells a seller a new one has arrived.',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': {
+              description: 'OK',
+              content: json({
+                type: 'object',
+                required: ['count'],
+                properties: { count: { type: 'integer' } },
+              }),
+            },
+            ...errors('401'),
+          },
         },
       },
       '/me/enquiries/received': {
@@ -758,6 +794,9 @@ export function buildOpenApiDocument(): JsonSchema {
         post: {
           tags: ['admin'],
           summary: 'Feature a listing for a number of days',
+          description:
+            'Free and editorial: staff choose what to promote and no money changes hands. ' +
+            'There is deliberately no self-service route.',
           security: [{ bearerAuth: [] }],
           responses: { '200': { description: 'Featured' }, ...errors('401', '403', '404') },
         },

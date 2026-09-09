@@ -2,8 +2,10 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { IconHeart, IconList, IconMail } from '@tabler/icons-react';
-import { getCurrentUser } from '@/lib/auth/session';
+import { getAccessToken, getCurrentUser } from '@/lib/auth/session';
 import { getTranslations } from '@/lib/i18n';
+import { apiFetch } from '@/lib/api/client';
+import { Badge } from '@/components/ui/badge';
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
@@ -13,10 +15,23 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   const { t } = await getTranslations();
 
+  // Enquiries are delivered in-app only, so the portal itself has to surface a
+  // new one — nothing else will.
+  const unread = await apiFetch<{ count: number }>('/me/enquiries/unread-count', {
+    token: await getAccessToken(),
+  })
+    .then((r) => r.count)
+    .catch(() => 0);
+
   const links = [
-    { href: '/dashboard/listings', label: t('dashboard.listings'), icon: IconList },
-    { href: '/dashboard/enquiries', label: t('dashboard.enquiries'), icon: IconMail },
-    { href: '/dashboard/saved', label: t('dashboard.saved'), icon: IconHeart },
+    { href: '/dashboard/listings', label: t('dashboard.listings'), icon: IconList, badge: 0 },
+    {
+      href: '/dashboard/enquiries',
+      label: t('dashboard.enquiries'),
+      icon: IconMail,
+      badge: unread,
+    },
+    { href: '/dashboard/saved', label: t('dashboard.saved'), icon: IconHeart, badge: 0 },
   ];
 
   return (
@@ -35,6 +50,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                 >
                   <link.icon className="size-4" aria-hidden />
                   {link.label}
+                  {link.badge > 0 && (
+                    <Badge variant="destructive" className="ml-auto">
+                      <span className="sr-only">New: </span>
+                      {link.badge}
+                    </Badge>
+                  )}
                 </Link>
               </li>
             ))}

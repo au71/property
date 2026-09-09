@@ -138,6 +138,12 @@ export async function suspend(actor: Actor, listingId: string, reason: string) {
   return updated;
 }
 
+/**
+ * Featuring is free and editorial: staff choose what to promote, and no money
+ * changes hands. There is deliberately no self-service route — if every seller
+ * could feature their own listing at no cost, every listing would be featured
+ * and the badge would mean nothing.
+ */
 export async function feature(actor: Actor, listingId: string, days: number) {
   const listing = await prisma.listing.findFirst({
     where: { id: listingId, status: 'PUBLISHED', deletedAt: null },

@@ -152,10 +152,11 @@ myListingsRouter.get(
   asyncHandler(async (req, res) => {
     const { status, limit } = validatedQuery<z.infer<typeof myListingsQuery>>(res);
     const actor = actorOf(req);
-    const [data, counts] = await Promise.all([
+    const [data, counts, quota] = await Promise.all([
       service.listMine(actor, status, limit),
       service.statusCounts(actor),
+      service.remainingQuota(actor),
     ]);
-    res.json({ data, counts });
+    res.json({ data, counts, quota });
   }),
 );

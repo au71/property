@@ -68,9 +68,16 @@ by a hand-written migration. Virtual tables cannot be expressed in
 `schema.prisma`, so Prisma diffs the schema against the database, sees them as
 orphans, and offers to **drop your search index**.
 
-Use `npm run db:migrate:new -- --name your_change` instead. It generates the
-migration without applying it, strips any statement touching an FTS object, then
-applies what remains. `npm run db:check` fails CI if a migration drops the index.
+Worse, that warning makes `migrate dev` **prompt**, so it cannot run unattended
+at all — not in a script, not in CI.
+
+Use `npm run db:migrate:new -- --name your_change` instead. It builds the SQL
+with `prisma migrate diff` (non-interactive), strips the blocks targeting the
+FTS objects, writes the migration, and applies it with `migrate deploy`. Every
+Prisma diff proposes those drops — replaying the history into its shadow database
+creates the tables, and the schema does not contain them — so seeing them
+stripped is expected, not a warning sign. `npm run db:check` fails CI if a
+migration ever does drop the index.
 
 ### Prices are strings
 
@@ -125,12 +132,28 @@ rather than at token expiry.
 |---|:--:|:--:|:--:|:--:|:--:|
 | Browse, save, enquire | yes | yes | yes | yes | yes |
 | Create and edit own listings | — | yes | yes | yes | yes |
-| Active-listing quota | — | 10 | 100 | none | none |
+| New listings per rolling 24h | — | 5 | 5 | none | none |
 | Approve / reject / suspend | — | — | — | yes | yes |
 | Manage roles and taxonomy | — | — | — | — | yes |
 
 **Every listing is reviewed before it goes live**, including listings from
 verified agents. Editing a published listing returns it to `PENDING_REVIEW`.
+
+The quota is a **rate, not a cap**: five new listings per account per rolling 24
+hours, charged to whoever creates them. A cap on live listings would punish an
+agency with real stock while doing nothing about someone posting the same flat
+five times an hour; a daily rate is the other way round. Soft-deleted listings
+still count, or the limit is bypassed by create-and-delete.
+
+**An owner does not need an account** for their agent to list their property.
+`propertyOwnerName` / `propertyOwnerPhone` record them as free text, and those
+fields are stripped from every response except to the listing's own account and
+to staff — see `canSeePropertyOwner`.
+
+**Enquiries are delivered in-app only.** No email, no SMS.
+`GET /me/enquiries/unread-count` drives the dashboard badge, which is the whole
+delivery mechanism. **Featuring is free and editorial** — staff-only, with no
+payment and no self-service route.
 
 ## Auth flow
 

@@ -69,6 +69,17 @@ export function canSeeEnquiries(actor: Actor, listing: ListingRef): boolean {
   return isStaff(actor) || ownsListing(actor, listing);
 }
 
+/**
+ * The property owner's own name and number, recorded when they have no account.
+ * That is a private individual's contact details, handed to an agent so the
+ * agent can sell their house — not so the portal can publish it. Only the
+ * listing's own account and staff ever see them.
+ */
+export function canSeePropertyOwner(actor: Actor | null, listing: ListingRef): boolean {
+  if (!actor) return false;
+  return isStaff(actor) || ownsListing(actor, listing);
+}
+
 /** Contact details are hidden from nobody, but the exact address can be. */
 export function canSeeExactAddress(
   actor: Actor | null,
@@ -98,14 +109,28 @@ export function nextStatusAfterEdit(current: ListingStatus): ListingStatus {
   }
 }
 
-/** Active listings count against a quota; archived and sold ones do not. */
-export const QUOTA_COUNTED_STATUSES: ListingStatus[] = ['DRAFT', 'PENDING_REVIEW', 'PUBLISHED'];
+/**
+ * The quota is a rate, not a cap: five new listings per account per day.
+ *
+ * A cap on *live* listings punishes a legitimate agency with real stock, while
+ * doing nothing to stop someone posting the same flat five times an hour. A
+ * daily rate is the other way round — it leaves genuine inventory alone and
+ * limits the flooding that moderation actually has to absorb.
+ *
+ * The window is a rolling 24 hours rather than a calendar day, because a
+ * calendar day lets someone post five at 23:59 and five more at 00:01.
+ */
+export const DAILY_LISTING_QUOTA = 5;
+export const QUOTA_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-export function listingQuotaFor(actor: Actor): number {
+export function dailyListingQuotaFor(actor: Actor): number {
   if (isStaff(actor)) return Number.POSITIVE_INFINITY;
-  if (hasRole(actor, 'AGENT')) return 100;
-  if (hasRole(actor, 'OWNER')) return 10;
+  if (hasRole(actor, 'OWNER', 'AGENT')) return DAILY_LISTING_QUOTA;
   return 0;
+}
+
+export function quotaWindowStart(now = new Date()): Date {
+  return new Date(now.getTime() - QUOTA_WINDOW_MS);
 }
 
 /** Which status transitions the owner (not staff) may drive directly. */

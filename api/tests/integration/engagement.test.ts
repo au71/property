@@ -407,3 +407,50 @@ describe('contact details', () => {
       .expect(200);
   });
 });
+
+describe('in-app enquiry delivery', () => {
+  it('counts new enquiries for the listing owner only', async () => {
+    for (let i = 0; i < 3; i += 1) {
+      await request(app)
+        .post(`/api/v1/listings/${listingId}/enquiries`)
+        .send({ name: 'Ko Test', phone: '09123456789', message: 'Is this still available?' })
+        .expect(201);
+    }
+
+    const owner = await request(app)
+      .get('/api/v1/me/enquiries/unread-count')
+      .set(auth(ownerToken))
+      .expect(200);
+    expect(owner.body.count).toBe(3);
+
+    const stranger = await request(app)
+      .get('/api/v1/me/enquiries/unread-count')
+      .set(auth(otherToken))
+      .expect(200);
+    expect(stranger.body.count).toBe(0);
+  });
+
+  it('drops out of the count once the enquiry is marked contacted', async () => {
+    await request(app)
+      .post(`/api/v1/listings/${listingId}/enquiries`)
+      .send({ name: 'Ko Test', phone: '09123456789', message: 'Is this still available?' })
+      .expect(201);
+
+    const enquiry = await prisma.enquiry.findFirst({ where: { listingId } });
+    await request(app)
+      .patch(`/api/v1/enquiries/${enquiry!.id}`)
+      .set(auth(ownerToken))
+      .send({ status: 'CONTACTED' })
+      .expect(200);
+
+    const after = await request(app)
+      .get('/api/v1/me/enquiries/unread-count')
+      .set(auth(ownerToken))
+      .expect(200);
+    expect(after.body.count).toBe(0);
+  });
+
+  it('requires a sign-in', async () => {
+    await request(app).get('/api/v1/me/enquiries/unread-count').expect(401);
+  });
+});

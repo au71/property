@@ -1,5 +1,5 @@
 import { formatLakh, serializePrice } from '../../domain/money.js';
-import { canSeeExactAddress, type Actor } from '../../domain/policy.js';
+import { canSeeExactAddress, canSeePropertyOwner, type Actor } from '../../domain/policy.js';
 
 /**
  * Anything leaving the API goes through here. Two jobs: turn BigInt prices into
@@ -105,12 +105,18 @@ export function toListingDetail(listing: Record<string, unknown>, actor: Actor |
   const deposit = listing['depositAmount'] as bigint | null;
   const media = (listing['media'] as MediaRow[] | undefined) ?? [];
 
-  const addressVisible = canSeeExactAddress(actor, {
+  const ref = {
     ownerId: listing['ownerId'] as string,
     createdById: listing['createdById'] as string,
     status: listing['status'] as never,
+  };
+
+  const addressVisible = canSeeExactAddress(actor, {
+    ...ref,
     hideExactAddress: listing['hideExactAddress'] as boolean,
   });
+
+  const ownerVisible = canSeePropertyOwner(actor, ref);
 
   return {
     id: listing['id'],
@@ -170,6 +176,19 @@ export function toListingDetail(listing: Record<string, unknown>, actor: Actor |
     },
 
     owner: listing['owner'] ?? null,
+
+    // Present only for the listing's own account and for staff; absent from
+    // every public response, not merely nulled out.
+    ...(ownerVisible && listing['propertyOwnerName']
+      ? {
+          propertyOwner: {
+            name: listing['propertyOwnerName'],
+            phone: listing['propertyOwnerPhone'] ?? null,
+            note: listing['propertyOwnerNote'] ?? null,
+          },
+        }
+      : {}),
+
     isFeatured: listing['isFeatured'],
     viewCount: listing['viewCount'],
     enquiryCount: listing['enquiryCount'],

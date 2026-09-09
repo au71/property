@@ -66,6 +66,18 @@ model Listing {
   contactPhone String
   contactViber String?
 
+  // The real-world owner, when they have no account on the portal. An agent can
+  // list a property without first signing its owner up; `ownerId` then points at
+  // the agent's own account, which is who the portal holds responsible, and
+  // these record who actually owns the bricks.
+  //
+  // Never public: this is a private individual's name and number, given to an
+  // agent for a purpose that is not "publish it". Visible to the listing's
+  // creator and to staff only — see toListingDetail.
+  propertyOwnerName  String?
+  propertyOwnerPhone String?
+  propertyOwnerNote  String?
+
   isFeatured    Boolean   @default(false)
   featuredUntil DateTime?
 

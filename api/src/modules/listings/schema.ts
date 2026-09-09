@@ -111,8 +111,17 @@ const baseListingFields = {
   contactViber: z.string().trim().max(30).optional(),
 
   amenityIds: z.array(z.string()).max(50).default([]),
-  /** Agents may list on behalf of an owner account. */
+
+  /**
+   * When the property's owner has an account, an agent can attribute the
+   * listing to it. When they do not — the common case — leave this out and use
+   * the free-text fields below instead. An owner is never required to sign up
+   * for their agent to list their property.
+   */
   ownerId: z.string().optional(),
+  propertyOwnerName: z.string().trim().max(120).optional(),
+  propertyOwnerPhone: z.string().trim().max(30).optional(),
+  propertyOwnerNote: z.string().trim().max(500).optional(),
 };
 
 /**

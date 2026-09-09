@@ -57,6 +57,14 @@ myEnquiryRouter.get(
 );
 
 myEnquiryRouter.get(
+  '/enquiries/unread-count',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    res.json({ count: await service.unreadCount(actorOf(req)) });
+  }),
+);
+
+myEnquiryRouter.get(
   '/enquiries/sent',
   requireAuth,
   validate({ query: listQuery }),

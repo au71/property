@@ -29,24 +29,40 @@ export default async function MyListingsPage() {
   const { locale, t } = await getTranslations();
   const [user, token] = await Promise.all([getCurrentUser(), getAccessToken()]);
 
-  const { data, counts } = await apiFetch<{
+  const { data, counts, quota } = await apiFetch<{
     data: ListingSummary[];
     counts: Record<string, number>;
+    quota: { quota: number | null; used: number; remaining: number | null };
   }>('/me/listings', { token, query: { limit: 100 } });
+
+  const outOfAllowance = quota.remaining === 0;
 
   return (
     <div>
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-lg font-semibold">{t('dashboard.listings')}</h2>
         {canListProperties(user) && (
-          <Button asChild size="sm">
-            <Link href="/dashboard/listings/new">
-              <IconPlus />
-              {t('dashboard.newListing')}
-            </Link>
-          </Button>
+          <div className="flex items-center gap-3">
+            {quota.quota !== null && (
+              <span className="text-xs text-muted-foreground">
+                {quota.remaining} of {quota.quota} left today
+              </span>
+            )}
+            <Button asChild size="sm" disabled={outOfAllowance}>
+              <Link href="/dashboard/listings/new">
+                <IconPlus />
+                {t('dashboard.newListing')}
+              </Link>
+            </Button>
+          </div>
         )}
       </div>
+
+      {outOfAllowance && (
+        <p className="mt-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm">
+          You have posted today’s {quota.quota} listings. You can post again tomorrow.
+        </p>
+      )}
 
       {Object.keys(counts).length > 0 && (
         <ul className="mt-4 flex flex-wrap gap-2">

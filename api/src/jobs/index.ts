@@ -30,7 +30,7 @@ export async function expireListings(): Promise<number> {
   return due.length;
 }
 
-/** Drops the featured flag once the paid period ends. */
+/** Drops the featured flag once its editorial run ends. Featuring is free. */
 export async function unfeatureExpired(): Promise<number> {
   const result = await prisma.listing.updateMany({
     where: { isFeatured: true, featuredUntil: { lt: new Date() } },

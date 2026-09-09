@@ -939,7 +939,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** Create a listing (starts as DRAFT) */
+        /**
+         * Create a listing (starts as DRAFT)
+         * @description Limited to 5 per account per rolling 24 hours, counted against whoever creates the listing. An agent can list for an owner who has no account by supplying propertyOwnerName / propertyOwnerPhone instead of ownerId.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -1006,6 +1009,9 @@ export interface paths {
                         /** @default [] */
                         amenityIds?: string[];
                         ownerId?: string;
+                        propertyOwnerName?: string;
+                        propertyOwnerPhone?: string;
+                        propertyOwnerNote?: string;
                     };
                 };
             };
@@ -1098,6 +1104,11 @@ export interface paths {
                                 hasViber: boolean;
                             };
                             enquiryCount?: number;
+                            propertyOwner?: {
+                                name: string;
+                                phone?: string | null;
+                                note?: string | null;
+                            };
                             /** Format: date-time */
                             expiresAt?: string | null;
                             /** Format: date-time */
@@ -1304,6 +1315,11 @@ export interface paths {
                                 hasViber: boolean;
                             };
                             enquiryCount?: number;
+                            propertyOwner?: {
+                                name: string;
+                                phone?: string | null;
+                                note?: string | null;
+                            };
                             /** Format: date-time */
                             expiresAt?: string | null;
                             /** Format: date-time */
@@ -1492,6 +1508,9 @@ export interface paths {
                         /** @default [] */
                         amenityIds?: string[];
                         ownerId?: string;
+                        propertyOwnerName?: string;
+                        propertyOwnerPhone?: string;
+                        propertyOwnerNote?: string;
                     };
                 };
             };
@@ -1584,6 +1603,11 @@ export interface paths {
                                 hasViber: boolean;
                             };
                             enquiryCount?: number;
+                            propertyOwner?: {
+                                name: string;
+                                phone?: string | null;
+                                note?: string | null;
+                            };
                             /** Format: date-time */
                             expiresAt?: string | null;
                             /** Format: date-time */
@@ -2010,6 +2034,11 @@ export interface paths {
                                 hasViber: boolean;
                             };
                             enquiryCount?: number;
+                            propertyOwner?: {
+                                name: string;
+                                phone?: string | null;
+                                note?: string | null;
+                            };
                             /** Format: date-time */
                             expiresAt?: string | null;
                             /** Format: date-time */
@@ -2928,7 +2957,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The caller’s own listings, with status counts */
+        /** The caller’s own listings, with status counts and remaining quota */
         get: {
             parameters: {
                 query?: never;
@@ -2944,6 +2973,64 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Error */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                /** @enum {string} */
+                                code: "VALIDATION_ERROR" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "PAYLOAD_TOO_LARGE" | "RATE_LIMITED" | "INTERNAL";
+                                message: string;
+                                details?: unknown;
+                                requestId: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/enquiries/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Number of unanswered enquiries
+         * @description Enquiries are delivered in-app only — no email or SMS — so this drives the badge that tells a seller a new one has arrived.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            count: number;
+                        };
+                    };
                 };
                 /** @description Error */
                 401: {
@@ -3804,7 +3891,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Feature a listing for a number of days */
+        /**
+         * Feature a listing for a number of days
+         * @description Free and editorial: staff choose what to promote and no money changes hands. There is deliberately no self-service route.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -4454,6 +4544,11 @@ export interface components {
                 hasViber: boolean;
             };
             enquiryCount?: number;
+            propertyOwner?: {
+                name: string;
+                phone?: string | null;
+                note?: string | null;
+            };
             /** Format: date-time */
             expiresAt?: string | null;
             /** Format: date-time */

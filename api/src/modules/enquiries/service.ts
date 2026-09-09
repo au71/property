@@ -83,6 +83,21 @@ export async function listReceived(
   return rows;
 }
 
+/**
+ * Enquiries are delivered in-app only — no email, no SMS — so the portal has to
+ * make a new one visible on its own. This count drives the badge that does that.
+ */
+export async function unreadCount(actor: Actor): Promise<number> {
+  return prisma.enquiry.count({
+    where: {
+      status: 'NEW',
+      listing: isStaff(actor)
+        ? { deletedAt: null }
+        : { deletedAt: null, OR: [{ ownerId: actor.id }, { createdById: actor.id }] },
+    },
+  });
+}
+
 export function listSent(actor: Actor, limit: number) {
   return prisma.enquiry.findMany({
     where: { seekerId: actor.id },

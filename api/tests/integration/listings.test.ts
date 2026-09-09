@@ -123,10 +123,13 @@ describe('creating listings', () => {
     expect(res.body.attributes.landAreaSqft).toBe(2400);
   });
 
-  it('enforces the active-listing quota', async () => {
-    // An owner's quota is 10 active listings.
-    for (let i = 0; i < 10; i += 1) {
-      await createListing(t, ownerId, { status: 'PUBLISHED' });
+  it('allows five listings a day and refuses the sixth', async () => {
+    for (let i = 0; i < 5; i += 1) {
+      await request(app)
+        .post('/api/v1/listings')
+        .set(auth(ownerToken))
+        .send(listingBody(t))
+        .expect(201);
     }
     const res = await request(app)
       .post('/api/v1/listings')
@@ -134,17 +137,140 @@ describe('creating listings', () => {
       .send(listingBody(t))
       .expect(409);
     expect(res.body.error.code).toBe('CONFLICT');
+    expect(res.body.error.details).toMatchObject({ quota: 5, used: 5 });
   });
 
-  it('does not count archived listings against the quota', async () => {
-    for (let i = 0; i < 12; i += 1) {
-      await createListing(t, ownerId, { status: 'ARCHIVED' });
+  it('counts listings created yesterday against nothing', async () => {
+    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    for (let i = 0; i < 8; i += 1) {
+      await createListing(t, ownerId, { createdAt: twoDaysAgo });
     }
     await request(app)
       .post('/api/v1/listings')
       .set(auth(ownerToken))
       .send(listingBody(t))
       .expect(201);
+  });
+
+  it('counts a deleted listing, so delete-and-retry does not reset the limit', async () => {
+    const created: string[] = [];
+    for (let i = 0; i < 5; i += 1) {
+      const res = await request(app)
+        .post('/api/v1/listings')
+        .set(auth(ownerToken))
+        .send(listingBody(t))
+        .expect(201);
+      created.push(res.body.id);
+    }
+    for (const id of created) {
+      await request(app).delete(`/api/v1/listings/${id}`).set(auth(ownerToken)).expect(204);
+    }
+    await request(app)
+      .post('/api/v1/listings')
+      .set(auth(ownerToken))
+      .send(listingBody(t))
+      .expect(409);
+  });
+
+  it('does not limit staff', async () => {
+    for (let i = 0; i < 7; i += 1) {
+      await request(app)
+        .post('/api/v1/listings')
+        .set(auth(staffToken))
+        .send(listingBody(t))
+        .expect(201);
+    }
+  });
+
+  it('charges an agent’s own allowance, not the owner’s', async () => {
+    const agent = await createUser('agent@example.com', ['AGENT', 'SEEKER']);
+    const agentToken = await tokenFor(app, 'agent@example.com');
+
+    for (let i = 0; i < 5; i += 1) {
+      await request(app)
+        .post('/api/v1/listings')
+        .set(auth(agentToken))
+        .send(listingBody(t, { ownerId }))
+        .expect(201);
+    }
+    // The agent is out of allowance...
+    await request(app)
+      .post('/api/v1/listings')
+      .set(auth(agentToken))
+      .send(listingBody(t, { ownerId }))
+      .expect(409);
+    // ...but the owner they were listing for is untouched.
+    await request(app)
+      .post('/api/v1/listings')
+      .set(auth(ownerToken))
+      .send(listingBody(t))
+      .expect(201);
+    expect(agent.id).toBeTruthy();
+  });
+});
+
+describe('listing for an owner without an account', () => {
+  it('records the owner as free text, with no account required', async () => {
+    const agent = await createUser('agent2@example.com', ['AGENT', 'SEEKER']);
+    const agentToken = await tokenFor(app, 'agent2@example.com');
+
+    const res = await request(app)
+      .post('/api/v1/listings')
+      .set(auth(agentToken))
+      .send(
+        listingBody(t, {
+          propertyOwnerName: 'U Aung Myint',
+          propertyOwnerPhone: '09987654321',
+          propertyOwnerNote: 'Prefers viewings at the weekend.',
+        }),
+      )
+      .expect(201);
+
+    // The agent's own account holds the record; no user was created for the owner.
+    const row = await prisma.listing.findUnique({ where: { id: res.body.id } });
+    expect(row?.ownerId).toBe(agent.id);
+    expect(row?.propertyOwnerName).toBe('U Aung Myint');
+    expect(await prisma.user.count({ where: { name: 'U Aung Myint' } })).toBe(0);
+  });
+
+  it('never exposes the owner’s details publicly', async () => {
+    const listing = await createListing(t, ownerId, {
+      propertyOwnerName: 'Daw Khin Thida',
+      propertyOwnerPhone: '09111222333',
+    });
+
+    const anon = await request(app).get(`/api/v1/listings/${listing.id}`).expect(200);
+    expect(JSON.stringify(anon.body)).not.toContain('Daw Khin Thida');
+    expect(JSON.stringify(anon.body)).not.toContain('09111222333');
+    expect(anon.body.propertyOwner).toBeUndefined();
+
+    const stranger = await request(app)
+      .get(`/api/v1/listings/${listing.id}`)
+      .set(auth(otherOwnerToken))
+      .expect(200);
+    expect(stranger.body.propertyOwner).toBeUndefined();
+  });
+
+  it('shows them to the listing’s own account and to staff', async () => {
+    const listing = await createListing(t, ownerId, {
+      propertyOwnerName: 'Daw Khin Thida',
+      propertyOwnerPhone: '09111222333',
+    });
+
+    const owner = await request(app)
+      .get(`/api/v1/listings/${listing.id}`)
+      .set(auth(ownerToken))
+      .expect(200);
+    expect(owner.body.propertyOwner).toMatchObject({
+      name: 'Daw Khin Thida',
+      phone: '09111222333',
+    });
+
+    const staff = await request(app)
+      .get(`/api/v1/listings/${listing.id}`)
+      .set(auth(staffToken))
+      .expect(200);
+    expect(staff.body.propertyOwner?.name).toBe('Daw Khin Thida');
   });
 });
 

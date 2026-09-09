@@ -6,7 +6,9 @@ import {
   canTransition,
   canViewListing,
   canSeeExactAddress,
-  listingQuotaFor,
+  canSeePropertyOwner,
+  dailyListingQuotaFor,
+  quotaWindowStart,
   nextStatusAfterEdit,
 } from '../../src/domain/policy.js';
 
@@ -122,22 +124,47 @@ describe('canSeeExactAddress', () => {
   });
 });
 
-describe('listingQuotaFor', () => {
+describe('dailyListingQuotaFor', () => {
   it('gives seekers no quota', () => {
-    expect(listingQuotaFor(actor('u', ['SEEKER']))).toBe(0);
+    expect(dailyListingQuotaFor(actor('u', ['SEEKER']))).toBe(0);
   });
 
-  it('gives agents more room than owners', () => {
-    expect(listingQuotaFor(actor('u', ['AGENT']))).toBeGreaterThan(
-      listingQuotaFor(actor('u', ['OWNER'])),
-    );
-  });
-
-  it('takes the most generous of several roles', () => {
-    expect(listingQuotaFor(actor('u', ['OWNER', 'AGENT']))).toBe(100);
+  it('gives owners and agents the same daily allowance', () => {
+    expect(dailyListingQuotaFor(actor('u', ['OWNER']))).toBe(5);
+    expect(dailyListingQuotaFor(actor('u', ['AGENT']))).toBe(5);
   });
 
   it('is unlimited for staff', () => {
-    expect(listingQuotaFor(actor('u', ['STAFF']))).toBe(Number.POSITIVE_INFINITY);
+    expect(dailyListingQuotaFor(actor('u', ['STAFF']))).toBe(Number.POSITIVE_INFINITY);
+  });
+});
+
+describe('quotaWindowStart', () => {
+  it('is a rolling 24 hours, not a calendar day', () => {
+    // A calendar boundary would let someone post five at 23:59 and five more a
+    // couple of minutes later.
+    const now = new Date('2026-09-09T00:05:00.000Z');
+    expect(quotaWindowStart(now).toISOString()).toBe('2026-09-08T00:05:00.000Z');
+  });
+});
+
+describe('canSeePropertyOwner', () => {
+  it('hides the owner’s details from the public', () => {
+    expect(canSeePropertyOwner(null, listing())).toBe(false);
+  });
+
+  it('hides them from an unrelated signed-in user', () => {
+    expect(canSeePropertyOwner(actor('someone', ['SEEKER']), listing())).toBe(false);
+    expect(canSeePropertyOwner(actor('owner-2', ['OWNER']), listing())).toBe(false);
+  });
+
+  it('shows them to the account that created the listing', () => {
+    expect(
+      canSeePropertyOwner(actor('agent-9', ['AGENT']), listing({ createdById: 'agent-9' })),
+    ).toBe(true);
+  });
+
+  it('shows them to staff', () => {
+    expect(canSeePropertyOwner(actor('s', ['STAFF']), listing())).toBe(true);
   });
 });

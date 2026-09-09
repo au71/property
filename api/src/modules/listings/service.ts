@@ -2,15 +2,15 @@ import { prisma } from '../../db/prisma.js';
 import { badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { deriveLandAreaSqft } from '../../domain/area.js';
 import {
-  QUOTA_COUNTED_STATUSES,
   canCreateListings,
   canEditListing,
   canSubmitForReview,
   canTransition,
   canViewListing,
+  dailyListingQuotaFor,
   isStaff,
-  listingQuotaFor,
   nextStatusAfterEdit,
+  quotaWindowStart,
   type Actor,
 } from '../../domain/policy.js';
 import { toListingDetail, toListingSummary } from './dto.js';
@@ -200,17 +200,50 @@ function normalizeAttributes(input: Partial<CreateListingInput>) {
   return out;
 }
 
+/**
+ * Counted against whoever pressed the button, not the listing's owner: an agent
+ * posting for ten different owners is exactly the flooding this limits, and
+ * attributing it to the owners would let one account post without limit.
+ *
+ * Soft-deleted listings still count. Otherwise the limit is bypassed by
+ * creating and deleting in a loop.
+ */
 async function assertQuota(actor: Actor): Promise<void> {
-  const quota = listingQuotaFor(actor);
+  const quota = dailyListingQuotaFor(actor);
   if (quota === Number.POSITIVE_INFINITY) return;
-  const active = await prisma.listing.count({
-    where: { ownerId: actor.id, status: { in: QUOTA_COUNTED_STATUSES }, deletedAt: null },
+
+  const since = quotaWindowStart();
+  const recent = await prisma.listing.count({
+    where: { createdById: actor.id, createdAt: { gte: since } },
   });
-  if (active >= quota) {
+
+  if (recent >= quota) {
+    const oldest = await prisma.listing.findFirst({
+      where: { createdById: actor.id, createdAt: { gte: since } },
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    });
+    const freesUpAt = oldest
+      ? new Date(oldest.createdAt.getTime() + 24 * 60 * 60 * 1000)
+      : new Date();
+
     throw conflict(
-      `You have reached your limit of ${quota} active listings. Archive one before adding another.`,
+      `You can post ${quota} listings a day. You can post again after ${freesUpAt.toISOString()}.`,
+      { quota, used: recent, retryAfter: freesUpAt.toISOString() },
     );
   }
+}
+
+/** How much of today's allowance is left, for the dashboard. */
+export async function remainingQuota(actor: Actor) {
+  const quota = dailyListingQuotaFor(actor);
+  if (quota === Number.POSITIVE_INFINITY) {
+    return { quota: null, used: 0, remaining: null };
+  }
+  const used = await prisma.listing.count({
+    where: { createdById: actor.id, createdAt: { gte: quotaWindowStart() } },
+  });
+  return { quota, used, remaining: Math.max(0, quota - used) };
 }
 
 export async function create(actor: Actor, input: CreateListingInput) {

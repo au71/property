@@ -419,15 +419,15 @@ prisma`. Controllers never touch Prisma directly; services never touch
 | Save listings / saved searches | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Send enquiries | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Create/edit own listings | — | ✅ | ✅ | ✅ | ✅ |
-| Listing quota | — | 10 active | 100 active | ∞ | ∞ |
-| Create listing on behalf of an owner | — | — | ✅ | ✅ | ✅ |
+| New listings per day | — | 5 | 5 | ∞ | ∞ |
+| Create listing on behalf of an owner (no account needed for them) | — | — | ✅ | ✅ | ✅ |
 | See enquiries for own listings | — | ✅ | ✅ | ✅ | ✅ |
 | Approve / reject / suspend listings | — | — | — | ✅ | ✅ |
 | Handle reports | — | — | — | ✅ | ✅ |
 | Verify agents | — | — | — | ✅ | ✅ |
 | Manage taxonomy (categories/locations) | — | — | — | — | ✅ |
 | Manage users & roles, impersonate | — | — | — | — | ✅ |
-| Feature a listing | — | — | — | ✅ | ✅ |
+| Feature a listing (free, editorial) | — | — | — | ✅ | ✅ |
 
 Authorization is enforced twice: a `requireRole([...])` middleware for coarse
 gates, and an explicit ownership check inside each service
@@ -713,12 +713,18 @@ the feature, README updated, CI green on `main`.
 | Currency | **MMK only** at launch. The `currency` column and currency-aware formatter stay, so USD is a later seed + UI change, not a migration. |
 | Moderation | **Every listing is reviewed.** `DRAFT → PENDING_REVIEW → PUBLISHED`, no auto-publish path, including for verified agents. |
 | Map | **No map in v1.** `lat`/`lng` remain optional nullable columns so the data is ready; listing detail shows a static location card. |
+| Agent on behalf of an owner | **The owner needs no account.** An agent records the owner's name and phone as free text on the listing; the agent's own account holds the record. Those details are private — visible to the listing's account and to staff, never in a public response. |
+| Enquiry delivery | **In-app only.** No email, no SMS. An unread count drives a badge in the dashboard so a seller notices. Viber and Meta Messenger are the intended next channels; nothing for them is built. |
+| Listing quota | **Five per account per rolling 24 hours**, counted against whoever creates the listing. |
+| Featuring | **Free and editorial.** Staff choose what to promote; no payment, and no self-service route. |
 
 ## 12. Still open (not blocking)
 
-1. **Agent-on-behalf-of-owner** — does an agent listing a property need the owner
-   to have an account (§5.4), or is a free-text owner contact enough for v1?
-2. **Enquiry delivery** — email, SMS, or in-app only? SMS costs money and needs a
-   provider decision (§5.4 already assumes a pluggable one).
-3. **Listing quotas & featured listings** (§5.4) — placeholders; confirm the real
-   numbers and whether featuring is free/manual in v1.
+1. **Saved-search alerts** — the `alertFrequency` field and the job slot exist,
+   but with delivery now in-app only there is nowhere to send a digest. Either it
+   becomes an in-app inbox, or it waits for the Viber/Messenger integration.
+2. **Viber and Meta Messenger** — the intended enquiry channels after v1. Both
+   need a business account and a webhook endpoint; neither is designed yet.
+3. **Quota appeals** — an agency with genuine volume will hit five a day quickly.
+   There is no mechanism for staff to raise an individual account's limit; today
+   the only lever is granting STAFF, which is far too much.

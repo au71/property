@@ -51,6 +51,9 @@ interface FormState {
   landLengthFt: string;
   contactName: string;
   contactPhone: string;
+  propertyOwnerName: string;
+  propertyOwnerPhone: string;
+  propertyOwnerNote: string;
   amenityIds: string[];
 }
 
@@ -79,8 +82,12 @@ export function ListingWizard({ regions, categories, amenities, locale, defaultC
     landLengthFt: '',
     contactName: defaultContact.name,
     contactPhone: defaultContact.phone,
+    propertyOwnerName: '',
+    propertyOwnerPhone: '',
+    propertyOwnerNote: '',
     amenityIds: [],
   });
+  const [listingForSomeoneElse, setListingForSomeoneElse] = useState(false);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -150,6 +157,14 @@ export function ListingWizard({ regions, categories, amenities, locale, defaultC
         amenityIds: form.amenityIds,
       };
       if (form.addressLine.trim()) payload['addressLine'] = form.addressLine.trim();
+      if (listingForSomeoneElse) {
+        // The owner needs no account: their details go on the listing as text,
+        // visible only to this account and to staff.
+        if (form.propertyOwnerName.trim()) payload['propertyOwnerName'] = form.propertyOwnerName.trim();
+        if (form.propertyOwnerPhone.trim())
+          payload['propertyOwnerPhone'] = form.propertyOwnerPhone.trim();
+        if (form.propertyOwnerNote.trim()) payload['propertyOwnerNote'] = form.propertyOwnerNote.trim();
+      }
       if (form.dealType === 'RENT') {
         payload['rentPeriod'] = form.rentPeriod;
         if (form.advanceMonths) payload['advanceMonths'] = Number(form.advanceMonths);
@@ -447,6 +462,47 @@ export function ListingWizard({ regions, categories, amenities, locale, defaultC
                   placeholder="09xxxxxxxxx"
                 />
               </Field>
+            </div>
+
+            <div className="rounded-lg border border-border p-4">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <Checkbox
+                  checked={listingForSomeoneElse}
+                  onCheckedChange={(v) => setListingForSomeoneElse(v === true)}
+                />
+                I am listing this on behalf of the owner
+              </label>
+
+              {listingForSomeoneElse && (
+                <div className="mt-4 space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    The owner does not need an account. These details are private — only you
+                    and portal staff can see them, never buyers.
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Owner’s name">
+                      <Input
+                        value={form.propertyOwnerName}
+                        onChange={(e) => set('propertyOwnerName', e.target.value)}
+                      />
+                    </Field>
+                    <Field label="Owner’s phone">
+                      <Input
+                        value={form.propertyOwnerPhone}
+                        onChange={(e) => set('propertyOwnerPhone', e.target.value)}
+                        placeholder="09xxxxxxxxx"
+                      />
+                    </Field>
+                  </div>
+                  <Field label="Note (optional)">
+                    <Input
+                      value={form.propertyOwnerNote}
+                      onChange={(e) => set('propertyOwnerNote', e.target.value)}
+                      placeholder="Prefers viewings at the weekend"
+                    />
+                  </Field>
+                </div>
+              )}
             </div>
           </>
         )}

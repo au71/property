@@ -13,6 +13,12 @@ import type { DealType, ListingStatus, Prisma } from '../../src/generated/prisma
 
 const SEED = 20260909;
 const LISTING_COUNT = 300;
+/**
+ * The daily quota looks back 24 hours. Dating every seeded listing at least two
+ * days ago keeps demo accounts out of that window, so `owner1@property.test` can
+ * post the moment you sign in as them.
+ */
+const SEED_MIN_AGE_DAYS = 2;
 const DEMO_PASSWORD = 'Password123!';
 const LAKH = 100_000n;
 
@@ -347,22 +353,18 @@ async function main(): Promise<void> {
   let refCounter = 0;
 
   /**
-   * Sample data must obey the same quota rule the API enforces, or the demo
-   * owner accounts start life unable to post. Track active listings per owner
-   * and only assign to an owner with room to spare.
+   * The API allows five new listings per account per rolling 24 hours. Seeded
+   * listings are historical — every one is dated at least SEED_MIN_AGE_DAYS ago
+   * — so no demo account starts life unable to post.
+   *
+   * Listings are still spread across owners rather than piled onto a few, so the
+   * dashboard looks like a real portal rather than one prolific seller.
    */
-  const OWNER_SEED_CAP = 8;
-  const activePerOwner = new Map<string, number>();
-  const countsAgainstQuota = (s: ListingStatus) =>
-    s === 'DRAFT' || s === 'PENDING_REVIEW' || s === 'PUBLISHED';
+  const perOwner = new Map<string, number>();
+  const OWNER_SPREAD_TARGET = Math.ceil(LISTING_COUNT / users.owners.length) + 2;
   const ownerWithRoom = (): (typeof users.owners)[number] => {
-    const eligible = users.owners.filter((o) => (activePerOwner.get(o.id) ?? 0) < OWNER_SEED_CAP);
-    if (eligible.length === 0) {
-      throw new Error(
-        'Ran out of owner accounts with quota headroom; raise OWNER_NAMES or lower LISTING_COUNT.',
-      );
-    }
-    return rng.pick(eligible);
+    const eligible = users.owners.filter((o) => (perOwner.get(o.id) ?? 0) < OWNER_SPREAD_TARGET);
+    return rng.pick(eligible.length > 0 ? eligible : users.owners);
   };
 
   for (let i = 0; i < LISTING_COUNT; i += 1) {
@@ -372,16 +374,13 @@ async function main(): Promise<void> {
     const dealType: DealType = rng.bool(0.55) ? 'SALE' : 'RENT';
     const status = rng.weighted(statusWeights);
     const lister = rng.pick(listers);
-    // Agents list on an owner's behalf; owners list for themselves. Either way
-    // the listing counts against the *owner's* quota, so pick one with room.
+    // Agents list on an owner's behalf; owners list for themselves.
     const isAgentListing = users.agents.some((a) => a.id === lister.id);
     const owner =
-      isAgentListing || (activePerOwner.get(lister.id) ?? 0) >= OWNER_SEED_CAP
+      isAgentListing || (perOwner.get(lister.id) ?? 0) >= OWNER_SPREAD_TARGET
         ? ownerWithRoom()
         : lister;
-    if (countsAgainstQuota(status)) {
-      activePerOwner.set(owner.id, (activePerOwner.get(owner.id) ?? 0) + 1);
-    }
+    perOwner.set(owner.id, (perOwner.get(owner.id) ?? 0) + 1);
 
     refCounter += 1;
     const cityCode = township.citySlug === 'yangon' ? 'YGN' : 'MDY';
@@ -413,7 +412,7 @@ async function main(): Promise<void> {
     const isPublic = status === 'PUBLISHED';
     const publishedAt =
       isPublic || status === 'SOLD' || status === 'RENTED' || status === 'EXPIRED'
-        ? rng.pastDate(1, 90)
+        ? rng.pastDate(SEED_MIN_AGE_DAYS, 90)
         : null;
     const expiresAt =
       status === 'EXPIRED'
@@ -464,7 +463,7 @@ async function main(): Promise<void> {
         publishedAt,
         expiresAt,
         rejectionReason: status === 'REJECTED' ? rng.pick(content.REJECTION_REASONS) : null,
-        createdAt: publishedAt ?? rng.pastDate(1, 60),
+        createdAt: publishedAt ?? rng.pastDate(SEED_MIN_AGE_DAYS, 60),
         ...attributes,
         ...rentFields,
       },
@@ -552,11 +551,9 @@ async function main(): Promise<void> {
     if ((i + 1) % 50 === 0) console.log(`  ${i + 1}/${LISTING_COUNT} listings`);
   }
 
-  const overQuota = [...activePerOwner.values()].filter((n) => n > OWNER_SEED_CAP).length;
-  if (overQuota > 0) throw new Error(`${overQuota} owners exceeded the seed quota cap`);
   console.log(
     `  ${LISTING_COUNT} listings seeded (${publishedIds.length} published, ` +
-      `max ${Math.max(...activePerOwner.values())} active per owner)`,
+      `max ${Math.max(...perOwner.values())} per owner)`,
   );
 
   // Enquiries against published listings only — that is all a seeker can see.

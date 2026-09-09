@@ -212,6 +212,26 @@ export default async function ListingPage(props: PageProps<'/listing/[ref]'>) {
               error: t('common.error'),
             }}
           />
+          {listing.propertyOwner && (
+            <Card className="border-warning/40 bg-warning/5">
+              <CardContent className="pt-5">
+                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                  Property owner · private
+                </p>
+                <p className="mt-1 font-semibold">{listing.propertyOwner.name}</p>
+                {listing.propertyOwner.phone && (
+                  <p className="text-sm text-muted-foreground">{listing.propertyOwner.phone}</p>
+                )}
+                {listing.propertyOwner.note && (
+                  <p className="mt-2 text-sm">{listing.propertyOwner.note}</p>
+                )}
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Only you and portal staff can see this. It is never shown to buyers.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {isLive && (
             <Card>
               <CardContent className="pt-5">

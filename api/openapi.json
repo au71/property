@@ -642,6 +642,29 @@
           "enquiryCount": {
             "type": "integer"
           },
+          "propertyOwner": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "phone": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
           "expiresAt": {
             "type": [
               "string",
@@ -2730,6 +2753,7 @@
           "listings"
         ],
         "summary": "Create a listing (starts as DRAFT)",
+        "description": "Limited to 5 per account per rolling 24 hours, counted against whoever creates the listing. An agent can list for an owner who has no account by supplying propertyOwnerName / propertyOwnerPhone instead of ownerId.",
         "security": [
           {
             "bearerAuth": []
@@ -2967,6 +2991,18 @@
                   },
                   "ownerId": {
                     "type": "string"
+                  },
+                  "propertyOwnerName": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "propertyOwnerPhone": {
+                    "type": "string",
+                    "maxLength": 30
+                  },
+                  "propertyOwnerNote": {
+                    "type": "string",
+                    "maxLength": 500
                   }
                 },
                 "required": [
@@ -3315,6 +3351,29 @@
                     },
                     "enquiryCount": {
                       "type": "integer"
+                    },
+                    "propertyOwner": {
+                      "type": "object",
+                      "required": [
+                        "name"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
                     },
                     "expiresAt": {
                       "type": [
@@ -3912,6 +3971,29 @@
                     "enquiryCount": {
                       "type": "integer"
                     },
+                    "propertyOwner": {
+                      "type": "object",
+                      "required": [
+                        "name"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
                     "expiresAt": {
                       "type": [
                         "string",
@@ -4265,6 +4347,18 @@
                   },
                   "ownerId": {
                     "type": "string"
+                  },
+                  "propertyOwnerName": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "propertyOwnerPhone": {
+                    "type": "string",
+                    "maxLength": 30
+                  },
+                  "propertyOwnerNote": {
+                    "type": "string",
+                    "maxLength": 500
                   }
                 }
               }
@@ -4603,6 +4697,29 @@
                     },
                     "enquiryCount": {
                       "type": "integer"
+                    },
+                    "propertyOwner": {
+                      "type": "object",
+                      "required": [
+                        "name"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
                     },
                     "expiresAt": {
                       "type": [
@@ -5788,6 +5905,29 @@
                     },
                     "enquiryCount": {
                       "type": "integer"
+                    },
+                    "propertyOwner": {
+                      "type": "object",
+                      "required": [
+                        "name"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
                     },
                     "expiresAt": {
                       "type": [
@@ -7589,7 +7729,7 @@
         "tags": [
           "listings"
         ],
-        "summary": "The caller’s own listings, with status counts",
+        "summary": "The caller’s own listings, with status counts and remaining quota",
         "security": [
           {
             "bearerAuth": []
@@ -7598,6 +7738,85 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHENTICATED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "PAYLOAD_TOO_LARGE",
+                            "RATE_LIMITED",
+                            "INTERNAL"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/enquiries/unread-count": {
+      "get": {
+        "tags": [
+          "enquiries"
+        ],
+        "summary": "Number of unanswered enquiries",
+        "description": "Enquiries are delivered in-app only — no email or SMS — so this drives the badge that tells a seller a new one has arrived.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "count"
+                  ],
+                  "properties": {
+                    "count": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "description": "Error",
@@ -9207,6 +9426,7 @@
           "admin"
         ],
         "summary": "Feature a listing for a number of days",
+        "description": "Free and editorial: staff choose what to promote and no money changes hands. There is deliberately no self-service route.",
         "security": [
           {
             "bearerAuth": []

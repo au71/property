@@ -1,0 +1,189 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens reproducing the shadcn preset b1e79D0qa9:
+ * base colour "mist" (a cool neutral grey), emerald accent for charts and
+ * highlights, default radius, Inter for body text and Roboto for headings.
+ *
+ * The shadcn CLI could not run in this environment (ui.shadcn.com is blocked
+ * by the network policy), so the preset's configuration — read from the CLI's
+ * own request URL — is reproduced here by hand. Components under
+ * src/components/ui are the same Radix + Tailwind primitives the CLI installs.
+ */
+
+:root {
+  --radius: 0.625rem;
+
+  --background: oklch(0.995 0.001 250);
+  --foreground: oklch(0.21 0.014 250);
+
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.28 0.02 252);
+  --primary-foreground: oklch(0.985 0.002 250);
+
+  --secondary: oklch(0.96 0.004 250);
+  --secondary-foreground: oklch(0.28 0.02 252);
+
+  --muted: oklch(0.965 0.004 250);
+  --muted-foreground: oklch(0.53 0.014 252);
+
+  --accent: oklch(0.955 0.008 252);
+  --accent-foreground: oklch(0.28 0.02 252);
+
+  --destructive: oklch(0.58 0.21 27);
+  --destructive-foreground: oklch(0.985 0.002 250);
+
+  --success: oklch(0.6 0.13 160);
+  --success-foreground: oklch(0.985 0.002 250);
+
+  --warning: oklch(0.75 0.15 75);
+  --warning-foreground: oklch(0.25 0.03 75);
+
+  --border: oklch(0.92 0.005 250);
+  --input: oklch(0.92 0.005 250);
+  --ring: oklch(0.6 0.13 160);
+
+  /* Emerald-led chart ramp, per the preset's chartColor=emerald. */
+  --chart-1: oklch(0.62 0.14 162);
+  --chart-2: oklch(0.7 0.12 195);
+  --chart-3: oklch(0.55 0.12 250);
+  --chart-4: oklch(0.75 0.15 85);
+  --chart-5: oklch(0.65 0.16 25);
+}
+
+.dark {
+  --background: oklch(0.17 0.012 252);
+  --foreground: oklch(0.96 0.003 250);
+
+  --card: oklch(0.21 0.014 252);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.21 0.014 252);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.93 0.004 250);
+  --primary-foreground: oklch(0.21 0.014 252);
+
+  --secondary: oklch(0.27 0.015 252);
+  --secondary-foreground: oklch(0.96 0.003 250);
+
+  --muted: oklch(0.27 0.015 252);
+  --muted-foreground: oklch(0.71 0.012 252);
+
+  --accent: oklch(0.3 0.018 252);
+  --accent-foreground: oklch(0.96 0.003 250);
+
+  --destructive: oklch(0.65 0.19 25);
+  --destructive-foreground: oklch(0.99 0.002 250);
+
+  --success: oklch(0.68 0.14 162);
+  --success-foreground: oklch(0.17 0.012 252);
+
+  --warning: oklch(0.8 0.15 80);
+  --warning-foreground: oklch(0.2 0.03 80);
+
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.68 0.14 162);
+
+  --chart-1: oklch(0.68 0.14 162);
+  --chart-2: oklch(0.74 0.12 195);
+  --chart-3: oklch(0.63 0.14 250);
+  --chart-4: oklch(0.8 0.15 85);
+  --chart-5: oklch(0.7 0.17 25);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-roboto), var(--font-inter), ui-sans-serif, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.015em;
+  }
+
+  /*
+   * Myanmar script sits on a taller em box than Latin and clips at the
+   * line-heights that look right for English. Anything tagged as Burmese gets
+   * more room and a font stack that actually has the glyphs.
+   */
+  :lang(my),
+  .my-text {
+    font-family: var(--font-noto-myanmar), 'Pyidaungsu', 'Myanmar Text', sans-serif;
+    line-height: 1.9;
+  }
+
+  /* Keyboard focus must stay obvious; only the mouse ring is suppressed. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .container-page {
+    width: 100%;
+    margin-inline: auto;
+    max-width: 80rem;
+    padding-inline: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    .container-page {
+      padding-inline: 1.5rem;
+    }
+  }
+}

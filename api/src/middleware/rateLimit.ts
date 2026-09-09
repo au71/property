@@ -31,3 +31,9 @@ export const loginLimiter = rateLimit({ ...base, windowMs: 60_000, limit: 10 });
 export const enquiryLimiter = rateLimit({ ...base, windowMs: 60 * 60_000, limit: 5 });
 
 export const uploadLimiter = rateLimit({ ...base, windowMs: 60_000, limit: 30 });
+
+/**
+ * Revealing a phone number is the one action a scraper would want to run across
+ * the whole catalogue, so it gets a tighter budget than general browsing.
+ */
+export const contactLimiter = rateLimit({ ...base, windowMs: 60_000, limit: 20 });

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { asyncHandler } from '../../lib/asyncHandler.js';
 import { pathParam, validate, validatedBody, validatedQuery } from '../../middleware/validate.js';
 import { actorOf, requireAuth } from '../../middleware/auth.js';
+import { contactLimiter } from '../../middleware/rateLimit.js';
 import * as service from './service.js';
 import {
   createListingSchema,
@@ -42,6 +43,15 @@ listingsRouter.get(
   asyncHandler(async (req, res) => {
     const { limit } = validatedQuery<{ limit: number }>(res);
     res.json({ data: await service.similarTo(pathParam(req, 'id'), limit) });
+  }),
+);
+
+listingsRouter.get(
+  '/:id/contact',
+  contactLimiter,
+  validate({ params: idParamSchema }),
+  asyncHandler(async (req, res) => {
+    res.json(await service.revealContact(pathParam(req, 'id'), req.actor ?? null));
   }),
 );
 

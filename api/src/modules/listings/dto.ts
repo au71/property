@@ -160,9 +160,13 @@ export function toListingDetail(listing: Record<string, unknown>, actor: Actor |
 
     contact: {
       name: listing['contactName'],
-      // Revealed on request by the client, never printed into the initial HTML.
-      phone: listing['contactPhone'],
-      viber: listing['contactViber'] ?? null,
+      // Deliberately no phone number. A client component receiving it as a
+      // prop would have it serialised into the server-rendered payload, so a
+      // "reveal" button in the UI would be decoration while scrapers read the
+      // number straight out of the HTML. Numbers come from
+      // GET /listings/:id/contact instead: one rate-limited request per reveal.
+      hasPhone: Boolean(listing['contactPhone']),
+      hasViber: Boolean(listing['contactViber']),
     },
 
     owner: listing['owner'] ?? null,

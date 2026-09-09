@@ -54,6 +54,7 @@ const ERROR_SCHEMA: JsonSchema = {
 
 const PRICE_SCHEMA: JsonSchema = {
   type: 'object',
+  required: ['amount', 'currency', 'lakhLabel', 'isNegotiable', 'onRequest'],
   properties: {
     // Decimal string, not a number: a MMK sale price can exceed the range where
     // a JSON number is safe to do arithmetic on.
@@ -63,11 +64,46 @@ const PRICE_SCHEMA: JsonSchema = {
     isNegotiable: { type: 'boolean' },
     onRequest: { type: 'boolean' },
     rentPeriod: { type: ['string', 'null'], enum: ['MONTHLY', 'YEARLY', null] },
+    // Rental terms, present on RENT listings only.
+    depositAmount: { type: ['string', 'null'], pattern: '^\\d+$' },
+    depositLakhLabel: { type: ['string', 'null'] },
+    advanceMonths: { type: ['integer', 'null'] },
+    minLeaseMonths: { type: ['integer', 'null'] },
+    utilitiesIncluded: { type: ['boolean', 'null'] },
+    // Sale terms, present on SALE listings only.
+    isInstallmentAvailable: { type: 'boolean' },
+    installmentNote: { type: ['string', 'null'] },
+  },
+};
+
+const TOWNSHIP: JsonSchema = {
+  type: 'object',
+  required: ['id', 'slug', 'nameEn', 'nameMy'],
+  properties: {
+    id: { type: 'string' },
+    slug: { type: 'string' },
+    nameEn: { type: 'string' },
+    nameMy: { type: 'string' },
+    // Listings always come back with the township's city expanded, so a card
+    // can say "Bahan, Yangon" without a second request.
+    city: {
+      type: 'object',
+      required: ['id', 'slug', 'nameEn', 'nameMy'],
+      properties: {
+        id: { type: 'string' },
+        slug: { type: 'string' },
+        nameEn: { type: 'string' },
+        nameMy: { type: 'string' },
+      },
+    },
   },
 };
 
 const NAMED: JsonSchema = {
   type: 'object',
+  // Marked required so generated clients get non-optional fields; every
+  // taxonomy row in the database has all four.
+  required: ['id', 'slug', 'nameEn', 'nameMy'],
   properties: {
     id: { type: 'string' },
     slug: { type: 'string' },
@@ -78,6 +114,7 @@ const NAMED: JsonSchema = {
 
 const LISTING_SUMMARY: JsonSchema = {
   type: 'object',
+  required: ['id', 'publicRef', 'dealType', 'status', 'title', 'price', 'isFeatured'],
   properties: {
     id: { type: 'string' },
     publicRef: { type: 'string' },
@@ -86,7 +123,7 @@ const LISTING_SUMMARY: JsonSchema = {
     title: { type: 'string' },
     price: PRICE_SCHEMA,
     category: NAMED,
-    township: NAMED,
+    township: TOWNSHIP,
     coverImage: {
       type: ['object', 'null'],
       properties: { url: { type: 'string' }, thumbUrl: { type: 'string' } },
@@ -104,6 +141,15 @@ const LISTING_SUMMARY: JsonSchema = {
 
 const LISTING_DETAIL: JsonSchema = {
   type: 'object',
+  required: [
+    ...(LISTING_SUMMARY['required'] as string[]),
+    'description',
+    'addressHidden',
+    'attributes',
+    'amenities',
+    'media',
+    'contact',
+  ],
   properties: {
     ...(LISTING_SUMMARY['properties'] as JsonSchema),
     description: { type: 'string' },
@@ -127,26 +173,49 @@ const LISTING_DETAIL: JsonSchema = {
     },
     contact: {
       type: 'object',
+      description:
+        'Contact name only. The phone number is not included here — fetch it from ' +
+        'GET /listings/{id}/contact when the viewer asks for it.',
+      required: ['name', 'hasPhone', 'hasViber'],
       properties: {
         name: { type: 'string' },
-        phone: { type: 'string' },
-        viber: { type: ['string', 'null'] },
+        hasPhone: { type: 'boolean' },
+        hasViber: { type: 'boolean' },
       },
     },
     enquiryCount: { type: 'integer' },
     expiresAt: { type: ['string', 'null'], format: 'date-time' },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
     rejectionReason: { type: ['string', 'null'] },
+    owner: {
+      type: ['object', 'null'],
+      properties: {
+        id: { type: 'string' },
+        name: { type: 'string' },
+        avatarUrl: { type: ['string', 'null'] },
+        agentProfile: {
+          type: ['object', 'null'],
+          properties: {
+            agencyName: { type: ['string', 'null'] },
+            isVerifiedAgent: { type: 'boolean' },
+          },
+        },
+      },
+    },
   },
 };
 
 const AUTH_RESULT: JsonSchema = {
   type: 'object',
+  required: ['accessToken', 'user'],
   properties: {
     accessToken: { type: 'string' },
     // Present only for X-Client: mobile; web clients get an httpOnly cookie.
     refreshToken: { type: 'string' },
     user: {
       type: 'object',
+      required: ['id', 'name', 'roles', 'preferredLang', 'isVerified'],
       properties: {
         id: { type: 'string' },
         name: { type: 'string' },
@@ -241,6 +310,7 @@ export function buildOpenApiDocument(): JsonSchema {
         ListingDetail: LISTING_DETAIL,
         AuthResult: AUTH_RESULT,
         Named: NAMED,
+        Township: TOWNSHIP,
       },
     },
     paths: {
@@ -420,6 +490,31 @@ export function buildOpenApiDocument(): JsonSchema {
           tags: ['listings'],
           summary: 'Comparable listings',
           responses: { '200': { description: 'OK', content: json(listEnvelope(LISTING_SUMMARY)) } },
+        },
+      },
+      '/listings/{id}/contact': {
+        parameters: [pathParam('id', 'Listing id or public reference')],
+        get: {
+          tags: ['listings'],
+          summary: 'Reveal the seller’s contact details',
+          description:
+            'Kept out of the listing payload so the number is not in the page source. ' +
+            'Rate limited to 20 per minute.',
+          responses: {
+            '200': {
+              description: 'OK',
+              content: json({
+                type: 'object',
+                required: ['name', 'phone'],
+                properties: {
+                  name: { type: 'string' },
+                  phone: { type: 'string' },
+                  viber: { type: ['string', 'null'] },
+                },
+              }),
+            },
+            ...errors('404', '429'),
+          },
         },
       },
       '/listings/{id}/view': {

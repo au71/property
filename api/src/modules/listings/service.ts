@@ -453,6 +453,35 @@ export async function recordView(idOrRef: string): Promise<void> {
   });
 }
 
+/**
+ * Contact details for a published listing, fetched only when a viewer asks for
+ * them. Keeping them out of the page payload means harvesting every seller's
+ * number costs one rate-limited request each rather than one crawl of search.
+ */
+export async function revealContact(idOrRef: string, actor: Actor | null) {
+  const listing = await prisma.listing.findFirst({
+    where: { OR: [{ id: idOrRef }, { publicRef: idOrRef }], deletedAt: null },
+    select: {
+      contactName: true,
+      contactPhone: true,
+      contactViber: true,
+      ownerId: true,
+      createdById: true,
+      status: true,
+    },
+  });
+  if (!listing) throw notFound('Listing');
+  // Same visibility rule as the listing itself: an unpublished listing does not
+  // leak its owner's number to a stranger who guessed the reference.
+  if (!canViewListing(actor, listing)) throw notFound('Listing');
+
+  return {
+    name: listing.contactName,
+    phone: listing.contactPhone,
+    viber: listing.contactViber,
+  };
+}
+
 export async function statusCounts(actor: Actor) {
   const rows = await prisma.listing.groupBy({
     by: ['status'],

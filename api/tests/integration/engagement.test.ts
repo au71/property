@@ -378,3 +378,32 @@ describe('view counter', () => {
     expect((await prisma.listing.findUnique({ where: { id: draft.id } }))?.viewCount).toBe(0);
   });
 });
+
+describe('contact details', () => {
+  it('keeps the phone number out of the listing payload', async () => {
+    const res = await request(app).get(`/api/v1/listings/${listingId}`).expect(200);
+    // The whole point: a client component receiving the number as a prop would
+    // serialise it straight into the server-rendered HTML.
+    expect(JSON.stringify(res.body)).not.toContain('09123456789');
+    expect(res.body.contact).toEqual({
+      name: 'Test Contact',
+      hasPhone: true,
+      hasViber: false,
+    });
+  });
+
+  it('returns the number from the dedicated endpoint', async () => {
+    const res = await request(app).get(`/api/v1/listings/${listingId}/contact`).expect(200);
+    expect(res.body.phone).toBe('09123456789');
+  });
+
+  it('does not reveal the number for an unpublished listing', async () => {
+    const draft = await createListing(t, ownerId, { status: 'DRAFT', publishedAt: null });
+    await request(app).get(`/api/v1/listings/${draft.id}/contact`).expect(404);
+    // The owner may still see their own.
+    await request(app)
+      .get(`/api/v1/listings/${draft.id}/contact`)
+      .set(auth(ownerToken))
+      .expect(200);
+  });
+});

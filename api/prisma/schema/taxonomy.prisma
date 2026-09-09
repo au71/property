@@ -1,0 +1,67 @@
+model Region {
+  id        String  @id @default(cuid())
+  slug      String  @unique
+  nameEn    String
+  nameMy    String
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+  cities    City[]
+}
+
+model City {
+  id        String     @id @default(cuid())
+  regionId  String
+  slug      String     @unique
+  nameEn    String
+  nameMy    String
+  isActive  Boolean    @default(true)
+  sortOrder Int        @default(0)
+  region    Region     @relation(fields: [regionId], references: [id])
+  townships Township[]
+
+  @@index([regionId, isActive])
+}
+
+model Township {
+  id        String    @id @default(cuid())
+  cityId    String
+  slug      String    @unique
+  nameEn    String
+  nameMy    String
+  isActive  Boolean   @default(true)
+  sortOrder Int       @default(0)
+  // Reserved for a future map view; unused in v1.
+  centerLat Float?
+  centerLng Float?
+  city      City      @relation(fields: [cityId], references: [id])
+  listings  Listing[]
+
+  @@index([cityId, isActive])
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  parentId  String?
+  slug      String     @unique
+  nameEn    String
+  nameMy    String
+  fieldSet  FieldSet
+  iconKey   String?
+  isActive  Boolean    @default(true)
+  sortOrder Int        @default(0)
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryTree")
+  listings  Listing[]
+
+  @@index([parentId, isActive])
+}
+
+model Amenity {
+  id        String           @id @default(cuid())
+  slug      String           @unique
+  nameEn    String
+  nameMy    String
+  appliesTo FieldSet?
+  sortOrder Int              @default(0)
+  listings  ListingAmenity[]
+}

@@ -1,0 +1,74 @@
+model Enquiry {
+  id               String           @id @default(cuid())
+  listingId        String
+  seekerId         String?
+  name             String
+  phone            String
+  email            String?
+  message          String
+  preferredContact PreferredContact @default(PHONE)
+  status           EnquiryStatus    @default(NEW)
+  createdAt        DateTime         @default(now())
+  respondedAt      DateTime?
+  listing          Listing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  seeker           User?            @relation("EnquirySeeker", fields: [seekerId], references: [id])
+
+  @@index([listingId, createdAt])
+  @@index([seekerId, createdAt])
+}
+
+model SavedListing {
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+  @@index([listingId])
+}
+
+model SavedSearch {
+  id             String         @id @default(cuid())
+  userId         String
+  name           String
+  // Write-mostly, never filtered on: a JSON column is the right shape here.
+  queryJson      Json
+  alertFrequency AlertFrequency @default(NONE)
+  lastRunAt      DateTime?
+  createdAt      DateTime       @default(now())
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Report {
+  id         String       @id @default(cuid())
+  listingId  String
+  reporterId String?
+  reason     String
+  detail     String?
+  status     ReportStatus @default(OPEN)
+  resolvedAt DateTime?
+  createdAt  DateTime     @default(now())
+  listing    Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  reporter   User?        @relation("ReportReporter", fields: [reporterId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([listingId])
+}
+
+model AuditLog {
+  id       String   @id @default(cuid())
+  actorId  String?
+  action   String
+  entity   String
+  entityId String
+  dataJson Json?
+  ip       String?
+  createdAt DateTime @default(now())
+  actor    User?    @relation(fields: [actorId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}

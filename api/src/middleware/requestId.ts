@@ -1,0 +1,10 @@
+import { randomUUID } from 'node:crypto';
+import type { NextFunction, Request, Response } from 'express';
+
+/** Correlates a log line, an error body, and a client bug report. */
+export function requestId(req: Request, res: Response, next: NextFunction): void {
+  const incoming = req.get('x-request-id');
+  req.requestId = incoming && incoming.length <= 64 ? incoming : randomUUID();
+  res.setHeader('x-request-id', req.requestId);
+  next();
+}

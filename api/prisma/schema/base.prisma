@@ -1,0 +1,9 @@
+// Prisma 7 multi-file schema. Datasource URL lives in prisma7.config.ts.
+generator client {
+  provider = "prisma-client"
+  output   = "../../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}

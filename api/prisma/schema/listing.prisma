@@ -1,0 +1,143 @@
+model Listing {
+  id          String        @id @default(cuid())
+  // Human-facing reference, e.g. YGN-2026-000123
+  publicRef   String        @unique
+  ownerId     String
+  createdById String
+  dealType    DealType
+  status      ListingStatus @default(DRAFT)
+  categoryId  String
+  townshipId  String
+
+  addressLine      String?
+  hideExactAddress Boolean @default(false)
+  // Reserved for a future map view; optional in v1.
+  lat              Float?
+  lng              Float?
+
+  title           String
+  // Lowercased copy of title: SQLite has no case-insensitive Prisma filter.
+  titleNormalized String
+  description     String
+
+  // Smallest currency unit. BigInt because MMK sale prices exceed 2^31.
+  priceAmount        BigInt
+  currency           Currency @default(MMK)
+  priceIsNegotiable  Boolean  @default(false)
+  priceOnRequest     Boolean  @default(false)
+
+  // RENT only
+  rentPeriod        RentPeriod?
+  depositAmount     BigInt?
+  advanceMonths     Int?
+  minLeaseMonths    Int?
+  utilitiesIncluded Boolean?
+
+  // SALE only
+  isInstallmentAvailable Boolean @default(false)
+  installmentNote        String?
+
+  // fieldSet = BUILDING
+  bedrooms      Int?
+  bathrooms     Int?
+  floorNumber   Int?
+  totalFloors   Int?
+  floorAreaSqft Int?
+  furnishing    Furnishing?
+  hasLift       Boolean?
+  hasParking    Boolean?
+  buildYear     Int?
+  facing        String?
+
+  // fieldSet = LAND
+  landWidthFt   Int?
+  landLengthFt  Int?
+  landAreaSqft  Int?
+  landAreaAcre  Float?
+  roadWidthFt   Int?
+  isCornerPlot  Boolean?
+  landGrade     LandGrade?
+
+  // fieldSet = COMMERCIAL
+  powerPhase      PowerPhase?
+  ceilingHeightFt Int?
+
+  contactName  String
+  contactPhone String
+  contactViber String?
+
+  isFeatured    Boolean   @default(false)
+  featuredUntil DateTime?
+
+  viewCount    Int @default(0)
+  enquiryCount Int @default(0)
+
+  publishedAt DateTime?
+  expiresAt   DateTime?
+  // Links a SALE and a RENT listing for the same physical property.
+  groupId     String?
+  rejectionReason String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  owner     User             @relation("ListingOwner", fields: [ownerId], references: [id])
+  createdBy User             @relation("ListingCreator", fields: [createdById], references: [id])
+  category  Category         @relation(fields: [categoryId], references: [id])
+  township  Township         @relation(fields: [townshipId], references: [id])
+  media     Media[]
+  amenities ListingAmenity[]
+  enquiries Enquiry[]
+  savedBy   SavedListing[]
+  reports   Report[]
+  events    ListingEvent[]
+
+  @@index([status, dealType, townshipId, categoryId])
+  @@index([status, publishedAt])
+  @@index([status, priceAmount])
+  @@index([ownerId, status])
+  @@index([status, expiresAt])
+  @@index([groupId])
+}
+
+model ListingAmenity {
+  listingId String
+  amenityId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  amenity   Amenity @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([listingId, amenityId])
+  @@index([amenityId])
+}
+
+model Media {
+  id        String    @id @default(cuid())
+  listingId String
+  kind      MediaKind @default(IMAGE)
+  url       String
+  thumbUrl  String
+  width     Int
+  height    Int
+  bytes     Int
+  sortOrder Int       @default(0)
+  isCover   Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  listing   Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, sortOrder])
+}
+
+model ListingEvent {
+  id         String         @id @default(cuid())
+  listingId  String
+  actorId    String?
+  fromStatus ListingStatus?
+  toStatus   ListingStatus
+  note       String?
+  createdAt  DateTime       @default(now())
+  listing    Listing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  actor      User?          @relation(fields: [actorId], references: [id])
+
+  @@index([listingId, createdAt])
+}

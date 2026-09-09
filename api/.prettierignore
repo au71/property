@@ -1,0 +1,6 @@
+dist
+src/generated
+node_modules
+var
+openapi.json
+prisma/migrations

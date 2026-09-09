@@ -1,0 +1,82 @@
+model User {
+  id            String   @id @default(cuid())
+  email         String?  @unique
+  phone         String?  @unique
+  passwordHash  String?
+  name          String
+  avatarUrl     String?
+  preferredLang String   @default("my")
+  isVerified    Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  roles           UserRoleAssignment[]
+  agentProfile    AgentProfile?
+  sessions        Session[]
+  ownedListings   Listing[]            @relation("ListingOwner")
+  createdListings Listing[]            @relation("ListingCreator")
+  enquiriesSent   Enquiry[]            @relation("EnquirySeeker")
+  savedListings   SavedListing[]
+  savedSearches   SavedSearch[]
+  reportsFiled    Report[]             @relation("ReportReporter")
+  listingEvents   ListingEvent[]
+  auditLogs       AuditLog[]
+  otpCodes        OtpCode[]
+
+  @@index([isActive])
+}
+
+model UserRoleAssignment {
+  id     String @id @default(cuid())
+  userId String
+  role   Role
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([role])
+}
+
+model AgentProfile {
+  userId          String  @id
+  agencyName      String?
+  licenseNo       String?
+  bio             String?
+  // Never filtered on, so a JSON column is fine here.
+  serviceAreas    Json?
+  isVerifiedAgent Boolean @default(false)
+  verifiedAt      DateTime?
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id               String    @id @default(cuid())
+  userId           String
+  refreshTokenHash String    @unique
+  // Sessions rotated from the same login share a family; reuse revokes all of them.
+  familyId         String
+  userAgent        String?
+  ip               String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+}
+
+model OtpCode {
+  id        String    @id @default(cuid())
+  phone     String
+  codeHash  String
+  userId    String?
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([phone, expiresAt])
+}

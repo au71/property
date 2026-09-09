@@ -1,0 +1,91 @@
+// SQLite stores every enum below as TEXT (verified against Prisma 7.10).
+
+enum Role {
+  SEEKER
+  OWNER
+  AGENT
+  STAFF
+  ADMIN
+}
+
+enum DealType {
+  SALE
+  RENT
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+  SOLD
+  RENTED
+  EXPIRED
+  SUSPENDED
+  ARCHIVED
+}
+
+enum Currency {
+  MMK
+  USD
+}
+
+enum RentPeriod {
+  MONTHLY
+  YEARLY
+}
+
+enum Furnishing {
+  NONE
+  PARTIAL
+  FULL
+}
+
+enum LandGrade {
+  GRANT
+  FREEHOLD
+  LA_NA_39
+  OTHER
+}
+
+enum PowerPhase {
+  SINGLE
+  THREE
+}
+
+enum FieldSet {
+  BUILDING
+  LAND
+  COMMERCIAL
+}
+
+enum MediaKind {
+  IMAGE
+  FLOORPLAN
+}
+
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  CLOSED
+  SPAM
+}
+
+enum PreferredContact {
+  PHONE
+  VIBER
+  EMAIL
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  ACTIONED
+  DISMISSED
+}
+
+enum AlertFrequency {
+  NONE
+  DAILY
+  WEEKLY
+}

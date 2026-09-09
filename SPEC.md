@@ -1,6 +1,6 @@
 # Property Portal — Project Specification
 
-**Status:** Draft for review — nothing implemented yet.
+**Status:** Approved — implementation in progress.
 **Last updated:** 2026-09-09
 
 ---
@@ -32,17 +32,31 @@ Delivery order is **web first, mobile later**, on top of a single shared API.
 
 ## 2. Repository & directory layout
 
-Three **separate GitHub repositories**, cloned as **siblings** on disk:
+Three **fully self-contained sibling projects**:
 
 ```
-~/work/
-├── property-api/      # git@github.com:<org>/property-api.git
-├── property-app/      # git@github.com:<org>/property-app.git
-└── property-mobile/   # git@github.com:<org>/property-mobile.git
+property/
+├── api/       # Express + Prisma + SQLite
+├── app/       # Next.js web
+└── mobile/    # Expo
 ```
 
-Each repo is independently versioned, tested, and deployed. There is no monorepo
-tool (no Turborepo/Nx) — the coupling between them is the HTTP contract only.
+Each has its own `package.json`, `tsconfig.json`, `.gitignore`, `.env.example`,
+README, and CI workflow. There are **no cross-directory imports** and no monorepo
+tool (no workspaces, Turborepo, or Nx) — the only coupling between them is the
+HTTP contract. Each directory is therefore already an independent project that
+happens to share a git root.
+
+**Splitting into three repos** is a mechanical step whenever you want it, with
+full history preserved:
+
+```bash
+git subtree split -P api -b api-main
+git push git@github.com:<org>/property-api.git api-main:main
+```
+
+They live in one repo for now only because this build had push access to a single
+repository. Nothing in the code depends on that arrangement.
 
 ### 2.1 Sharing types across repos
 
@@ -197,27 +211,50 @@ DRAFT ──submit──▶ PENDING_REVIEW ──approve──▶ PUBLISHED ─�
   schemas): `base.prisma`, `user.prisma`, `listing.prisma`, `taxonomy.prisma`.
 - Migrations via `prisma migrate dev` / `migrate deploy`, committed to the repo.
 
-> **Verify at install time:** Prisma 7 moved to the new client generator, driver
-> adapters, and the Rust-free query compiler. Pin the exact minor version in
-> `package.json` and re-read the Prisma 7 release notes before writing the schema
-> — the generator block and client import path differ from Prisma 5/6 habits.
+See §4.2b for the verified Prisma 7 project shape (it differs from Prisma 5/6
+habits in ways that matter).
 
-### 4.2 SQLite constraints that shape the schema
+### 4.2 SQLite constraints — verified against Prisma 7.10.0
 
-These are real limits, not preferences:
+These were checked empirically against a real install, not assumed:
 
-1. **No native enums.** Prisma enums are unsupported on SQLite. Every enum-like
-   field is a `String` column, constrained by a Zod enum in the API layer and a
-   TypeScript union exported from `src/domain/enums.ts`. Values are `SCREAMING_SNAKE`.
-2. **No `Json` scalar (treat as unavailable).** Anything document-shaped is a
-   `String` column holding JSON, parsed/serialised through a Zod codec. This is
-   why §3.5 uses real columns rather than an attribute blob — we need to filter on
-   bedrooms and area.
-3. **No case-insensitive `mode: 'insensitive'` filters.** Free-text search goes
-   through **FTS5** (§4.5); simple prefix filters use a lowercased shadow column
-   (`titleNormalized`).
-4. **Single writer.** Enable WAL mode and a busy timeout at connection time. Fine
-   for v1 traffic; §9 covers the Postgres migration path.
+| Capability | Result | Consequence |
+|---|---|---|
+| `enum` on SQLite | **Supported** (stored `TEXT`) | Use real Prisma enums. |
+| `Json` scalar | **Supported** (stored `JSONB`) | Available, but see below. |
+| `BigInt` | **Supported** | Prices are `BigInt` (§3.6). |
+| `mode: 'insensitive'` | **Not supported** | Text search goes via FTS5 (§4.5). |
+| FTS5 | **Compiled into `better-sqlite3`** | Virtual table + triggers are viable. |
+
+So, concretely:
+
+1. **Real enums.** `DealType`, `ListingStatus`, `UserRole`, `Furnishing`,
+   `LandGrade`, `RentPeriod`, `EnquiryStatus`, `MediaKind`, `PowerPhase`,
+   `ReportStatus`, `AlertFrequency` are Prisma enums, giving generated TS union
+   types for free.
+2. **`Json` used sparingly.** Available, but SQLite cannot index inside a JSON
+   column, so it is used only for write-mostly, never-filtered payloads
+   (`SavedSearch.queryJson`, `AuditLog.dataJson`, `AgentProfile.serviceAreas`).
+   Filterable attributes stay real columns (§4.4).
+3. **No case-insensitive Prisma filters.** Free-text goes through FTS5; cheap
+   prefix matching uses a lowercased shadow column (`titleNormalized`).
+4. **Single writer.** WAL mode plus a busy timeout set at connection time. Fine
+   for v1; §9 covers the Postgres path.
+
+### 4.2b Prisma 7 project shape
+
+Verified against 7.10.0 (the `latest` npm tag currently points at an 8.0 release
+candidate, so both `prisma` and `@prisma/client` are pinned to `7.10.0` exactly):
+
+- Config lives in **`prisma7.config.ts`** at the project root (`defineConfig` from
+  `prisma/config`), which holds the schema path, migrations path, and the
+  datasource URL. The `datasource` block in the schema has **no `url` field**.
+- The generator is `provider = "prisma-client"` with a required `output`.
+- **The generated client is TypeScript source, not compiled JS.** It is emitted to
+  `src/generated/prisma/` and compiled by our own `tsc` as part of the build; the
+  directory is gitignored and regenerated by `postinstall`.
+- The driver adapter export is `PrismaBetterSqlite3` from
+  `@prisma/adapter-better-sqlite3`.
 
 ### 4.3 Entities
 
@@ -283,10 +320,12 @@ the `deletedAt: null` filter so it cannot be forgotten.
 
 ### 4.4 Why normalised columns, not a JSON attribute bag
 
-Search needs `bedrooms >= 3 AND floorAreaSqft BETWEEN x AND y ORDER BY priceAmount`.
-On SQLite without a JSON scalar, that means either JSON-extract expressions in raw
-SQL (unindexable, untyped) or real columns. Real columns win; the cost is a wide
-nullable table, which SQLite stores sparsely anyway.
+SQLite *does* have a JSON column type here, so this is a choice rather than a
+constraint. Search needs
+`bedrooms >= 3 AND floorAreaSqft BETWEEN x AND y ORDER BY priceAmount`, and SQLite
+cannot put an index inside a JSON document — that query against a blob means
+unindexable, untyped `json_extract` expressions in raw SQL. Real columns win. The
+cost is a wide nullable table, which SQLite stores sparsely anyway.
 
 ### 4.5 Search
 
@@ -665,21 +704,21 @@ the feature, README updated, CI green on `main`.
 
 ---
 
-## 11. Open questions for review
+## 11. Decisions taken at review
 
-1. **Next.js vs. Vite SPA** — the shadcn preset in the brief implies Next.js (§6.1).
-   Confirm that's what you want; SEO strongly favours it for a property portal.
-2. **Separate repos vs. one repo with three packages** — separate repos are what
-   you asked for and this spec follows that, at the cost of the codegen dance in
-   §2.1. Worth a last look before M0.
-3. **Currency** — is USD needed at launch, or MMK only?
-4. **Agent-on-behalf-of-owner** — does an agent listing a property need the owner
+| Question | Decision |
+|---|---|
+| Next.js vs. Vite SPA | **Next.js** (App Router), per the shadcn preset. |
+| Repo layout | Three self-contained sibling directories in one repo for now, each splittable into its own repo with `git subtree split` (history preserved). See §2. |
+| Currency | **MMK only** at launch. The `currency` column and currency-aware formatter stay, so USD is a later seed + UI change, not a migration. |
+| Moderation | **Every listing is reviewed.** `DRAFT → PENDING_REVIEW → PUBLISHED`, no auto-publish path, including for verified agents. |
+| Map | **No map in v1.** `lat`/`lng` remain optional nullable columns so the data is ready; listing detail shows a static location card. |
+
+## 12. Still open (not blocking)
+
+1. **Agent-on-behalf-of-owner** — does an agent listing a property need the owner
    to have an account (§5.4), or is a free-text owner contact enough for v1?
-5. **Moderation** — should every new listing be reviewed by staff before going
-   live, or should verified agents publish immediately?
-6. **Enquiry delivery** — email, SMS, or in-app only? SMS costs money and needs a
+2. **Enquiry delivery** — email, SMS, or in-app only? SMS costs money and needs a
    provider decision (§5.4 already assumes a pluggable one).
-7. **Map** — is a map view (pins, draw-to-search) in scope for v1, or after? It
-   changes the location model (we'd want lat/lng required, plus a tile provider).
-8. **Listing quotas & featured listings** (§5.4) — placeholders; confirm the real
+3. **Listing quotas & featured listings** (§5.4) — placeholders; confirm the real
    numbers and whether featuring is free/manual in v1.

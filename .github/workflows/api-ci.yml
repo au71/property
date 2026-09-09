@@ -1,0 +1,40 @@
+name: api
+
+on:
+  push:
+    paths: ['api/**', '.github/workflows/api-ci.yml']
+  pull_request:
+    paths: ['api/**', '.github/workflows/api-ci.yml']
+
+defaults:
+  run:
+    working-directory: api
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./prisma/ci.db
+      JWT_SECRET: ci-secret-that-is-definitely-long-enough-32
+      ENABLE_CRON: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+
+      - run: npm ci
+      - run: npm run db:check
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run db:deploy
+      - run: npm test
+      - run: npm run build
+
+      # The committed contract must match what the schemas actually produce.
+      - name: openapi.json is up to date
+        run: |
+          npm run openapi
+          git diff --exit-code openapi.json

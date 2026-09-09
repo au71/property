@@ -1,0 +1,39 @@
+[Unit]
+Description=Property portal API
+Documentation=https://github.com/au71/property
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=property
+Group=property
+WorkingDirectory=/srv/property/api
+EnvironmentFile=/srv/property/api/.env
+ExecStart=/usr/bin/node dist/server.js
+
+Restart=always
+RestartSec=5
+# Give up if it crash-loops, so a broken deploy is visible rather than silent.
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+# The API writes only to its own data directory; everything else is read-only.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/property/data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=property-api
+
+[Install]
+WantedBy=multi-user.target

@@ -293,9 +293,41 @@ function commercialAttributes(r: Rng) {
   } as const;
 }
 
+/**
+ * `--taxonomy-only` loads the reference data the portal cannot work without —
+ * regions, cities, townships, categories, amenities — and stops there. That is
+ * what a production database wants on day one. The full run additionally
+ * fabricates users and ~300 listings, which is what a staging box or a laptop
+ * wants and what production emphatically does not.
+ */
+const TAXONOMY_ONLY = process.argv.includes('--taxonomy-only');
+
 async function main(): Promise<void> {
-  console.log('Seeding property portal sample data...');
   await applySqlitePragmas();
+
+  if (TAXONOMY_ONLY) {
+    // Deliberately no wipe(): this runs against a live database, where dropping
+    // every listing to reload a category list would be a catastrophe.
+    const existing = await prisma.category.count();
+    if (existing > 0) {
+      console.log(`Taxonomy already loaded (${existing} categories). Nothing to do.`);
+      return;
+    }
+    await seedTaxonomy();
+    const [regions, townships, categories, amenities] = await Promise.all([
+      prisma.region.count(),
+      prisma.township.count(),
+      prisma.category.count(),
+      prisma.amenity.count(),
+    ]);
+    console.log(
+      `Taxonomy loaded: ${regions} regions, ${townships} townships, ` +
+        `${categories} categories, ${amenities} amenities.`,
+    );
+    return;
+  }
+
+  console.log('Seeding property portal sample data...');
   await wipe();
 
   await seedTaxonomy();

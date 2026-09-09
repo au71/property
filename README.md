@@ -90,6 +90,27 @@ Two things this environment blocked, both documented where they matter:
   bundling and driving it in a browser. It has **not** run on a device; see
   `mobile/README.md`.
 
+## Deploying
+
+One small VPS runs everything behind Caddy. See **[deploy/README.md](deploy/README.md)**
+for the runbook; the short version is:
+
+```bash
+ssh root@your-server
+curl -fsSLO https://raw.githubusercontent.com/au71/property/main/deploy/bootstrap.sh
+DOMAIN=property.example.com bash bootstrap.sh
+```
+
+Then `sudo -u property /srv/property/deploy/deploy.sh` for every deploy after that.
+
+SQLite needs a persistent disk and a single writer, so the API cannot go
+serverless. Caddy serves both apps from one domain by path, which means the
+browser talks to the API same-origin and there is no CORS anywhere.
+
+Backups run hourly via `VACUUM INTO` — not `cp`, which is not atomic against a
+live writer and can produce a backup that restores to a corrupt database. The
+restore path has been rehearsed.
+
 ## CI
 
 `.github/workflows/` runs each project independently, on changes to its own

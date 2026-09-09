@@ -1,0 +1,87 @@
+# Caddy reverse proxy for the property portal.
+#
+# Everything is served from ONE domain, which is deliberate: the browser then
+# talks to the API same-origin, so there is no CORS preflight on any request and
+# session cookies need no cross-site relaxation. Path routing keeps them apart:
+#
+#   /api/v1/*   -> the API      (Express, 127.0.0.1:4000)
+#   /media/*    -> the API      (uploaded photos, served from its disk)
+#   everything  -> the web app  (Next.js, 127.0.0.1:3000)
+#
+# The web app's own route handlers live at /api/auth/* and /api/proxy/*, which
+# do NOT collide with /api/v1 — those stay with Next.
+#
+# Replace property.example.com with your domain. Caddy obtains and renews the
+# TLS certificate on its own; there is nothing to configure for HTTPS.
+
+{
+	# Where Let's Encrypt sends expiry warnings.
+	email admin@example.com
+}
+
+property.example.com {
+	encode zstd gzip
+
+	# Security headers. The API sets its own via helmet; these cover the pages
+	# Next.js serves.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "SAMEORIGIN"
+		# Caddy advertising its version helps nobody but an attacker.
+		-Server
+	}
+
+	# Uploaded photos. Content-addressed by listing reference and timestamp, so
+	# they never change under a given URL and can be cached hard.
+	handle /media/* {
+		header Cache-Control "public, max-age=2592000, immutable"
+		reverse_proxy 127.0.0.1:4000
+	}
+
+	handle /api/v1/* {
+		reverse_proxy 127.0.0.1:4000 {
+			# The API sets `trust proxy`, so it reads the real client address
+			# from here rather than seeing every request as coming from Caddy.
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# Health and readiness, useful for an external uptime check.
+	handle /health {
+		reverse_proxy 127.0.0.1:4000
+	}
+	handle /ready {
+		reverse_proxy 127.0.0.1:4000
+	}
+
+	# The OpenAPI document, so clients can regenerate against production.
+	handle /openapi.json {
+		reverse_proxy 127.0.0.1:4000
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	log {
+		output file /var/log/caddy/property.log {
+			roll_size 50MiB
+			roll_keep 7
+		}
+	}
+}
+
+# --- Subdomain variant -------------------------------------------------------
+#
+# If you would rather split them (api.property.example.com), uncomment below and
+# remove the /api/v1 and /media blocks above. Note that this reintroduces CORS:
+# set WEB_ORIGIN on the API to the web origin, and NEXT_PUBLIC_API_URL on the web
+# app to the API origin.
+#
+# api.property.example.com {
+# 	encode zstd gzip
+# 	reverse_proxy 127.0.0.1:4000
+# }

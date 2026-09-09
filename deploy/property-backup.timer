@@ -1,0 +1,13 @@
+[Unit]
+Description=Hourly property portal backup
+
+[Timer]
+OnCalendar=hourly
+# Survives reboots: a missed run happens on the next boot rather than silently
+# never.
+Persistent=true
+# Spread the load so the backup does not land on the hour with everything else.
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,8 @@
+# Install to /etc/sudoers.d/property (mode 0440, root:root) with:
+#
+#   sudo install -m 0440 -o root -g root deploy/sudoers.property /etc/sudoers.d/property
+#   sudo visudo -c
+#
+# The deploy user may restart exactly these two services and nothing else. It
+# cannot edit the unit files, so it cannot widen this grant.
+property ALL=(root) NOPASSWD: /usr/bin/systemctl restart property-api, /usr/bin/systemctl restart property-web, /usr/bin/systemctl status property-api, /usr/bin/systemctl status property-web

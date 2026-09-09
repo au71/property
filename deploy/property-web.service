@@ -1,0 +1,40 @@
+[Unit]
+Description=Property portal web app
+Documentation=https://github.com/au71/property
+After=network-online.target property-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=property
+Group=property
+WorkingDirectory=/srv/property/app
+EnvironmentFile=/srv/property/app/.env.production
+# The binary directly, not `npx`: ProtectHome hides /home/property, and npx
+# wants a writable cache there.
+ExecStart=/srv/property/app/node_modules/.bin/next start --port 3000
+
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# Next writes its build cache here at runtime.
+ReadWritePaths=/srv/property/app/.next
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=property-web
+
+[Install]
+WantedBy=multi-user.target

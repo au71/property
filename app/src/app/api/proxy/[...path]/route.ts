@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { API_URL } from '@/lib/api/client';
+import { withClientIp } from '@/lib/api/client-ip';
 import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth/session';
 
 /**
@@ -30,6 +31,9 @@ async function forward(request: Request, path: string): Promise<Response> {
       if (value) headers.set(name, value);
     }
     headers.set('x-client', 'mobile');
+    // Enquiries and contact reveals are rate limited per IP; without this they
+    // would all be charged to the web server's single address.
+    withClientIp(headers, request);
     if (token) headers.set('authorization', `Bearer ${token}`);
     return fetch(target, { method: request.method, headers, body });
   };

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { API_URL } from '@/lib/api/client';
+import { withClientIp } from '@/lib/api/client-ip';
 import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth/session';
 
 /**
@@ -67,7 +68,12 @@ export async function POST(request: Request, ctx: RouteContext<'/api/auth/[...ac
 
   const upstream = await fetch(`${API_URL}/api/v1/auth/${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-client': 'mobile' },
+    // The visitor's address travels with the call, or the API's per-IP limits on
+    // OTP and login would count the whole site as one very busy client.
+    headers: withClientIp(
+      new Headers({ 'content-type': 'application/json', 'x-client': 'mobile' }),
+      request,
+    ),
     body: JSON.stringify(body),
   });
 

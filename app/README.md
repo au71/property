@@ -23,6 +23,11 @@ npm run dev          # http://localhost:3000
 Sign in with any seeded account, password `Password123!` — `owner1@property.test`
 for the seller side, `staff@property.test` for the moderation queue.
 
+Phone sign-in works locally too: enter any Myanmar mobile number on the **Phone**
+tab and read the six-digit code out of the API's log, where the development
+stand-in for the SMS gateway prints it. An unrecognised number gets an account
+on the spot, so this is also how you make a fresh seeker.
+
 ## Scripts
 
 | Command | Does |
@@ -79,6 +84,29 @@ and transparently refreshes it once on a 401.
 
 So: a script injection cannot read a session, and the API keeps one token
 contract for every client.
+
+Both handlers pass the visitor's address on to the API in `X-Forwarded-For`
+(`src/lib/api/client-ip.ts`). Every call reaches the API from this server, so
+without it the API's per-IP limits — five OTP requests a minute, five enquiries
+an hour — would be shared by the entire site rather than applied per visitor.
+Only the last entry of the incoming header is forwarded: that is the one Caddy
+saw, and anything a visitor put there themselves sits to its left.
+
+### Signing in by phone
+
+The **Phone** tab on `/login` is `OtpLoginForm`: it normalises what was typed to
+the `+959…` form the API stores (`src/lib/auth/phone.ts`, which mirrors
+`phoneSchema` on the API side), asks for a code, then verifies it.
+
+Whether the number already has an account is deliberately not knowable from the
+browser — `/auth/otp/request` answers identically either way, so it cannot be
+used to test which numbers are registered. The name field is therefore offered
+to everyone on the code step, and the API ignores it for an account that already
+has a name.
+
+The resend button counts down 60 seconds because the API sends nothing sooner
+than that for the same number (`OTP_RESEND_SECONDS`); a shorter countdown would
+promise a message that never arrives.
 
 ### Phone numbers are not in the page source
 

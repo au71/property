@@ -9,6 +9,7 @@ import {
 } from '../../lib/tokens.js';
 import {
   OTP_MAX_ATTEMPTS,
+  OTP_RESEND_SECONDS,
   generateOtpCode,
   hashOtpCode,
   otpExpiry,
@@ -159,6 +160,20 @@ export async function login(
 }
 
 export async function requestOtp(phone: string): Promise<void> {
+  // A code sent moments ago is still valid, so send nothing rather than a second
+  // message. The caller's response is the same either way — a client that could
+  // tell the two apart could probe which numbers have a code outstanding.
+  const recent = await prisma.otpCode.findFirst({
+    where: {
+      phone,
+      usedAt: null,
+      expiresAt: { gt: new Date() },
+      createdAt: { gt: new Date(Date.now() - OTP_RESEND_SECONDS * 1000) },
+    },
+    select: { id: true },
+  });
+  if (recent) return;
+
   const code = generateOtpCode();
   await prisma.otpCode.create({
     data: { phone, codeHash: hashOtpCode(phone, code), expiresAt: otpExpiry() },

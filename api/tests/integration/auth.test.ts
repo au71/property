@@ -4,6 +4,17 @@ import type { Express } from 'express';
 import { createApp } from '../../src/app.js';
 import { prisma } from '../../src/db/prisma.js';
 import { PASSWORD, auth, createUser, resetDatabase, tokenFor } from '../fixtures.js';
+import { OTP_RESEND_SECONDS, hashOtpCode, otpExpiry } from '../../src/lib/otp.js';
+
+/**
+ * The code itself is never readable — only its hash is stored — so a test that
+ * needs to complete the flow plants a code it already knows.
+ */
+async function plantOtp(phone: string, code: string, createdAt = new Date()): Promise<void> {
+  await prisma.otpCode.create({
+    data: { phone, codeHash: hashOtpCode(phone, code), expiresAt: otpExpiry(), createdAt },
+  });
+}
 
 let app: Express;
 
@@ -287,6 +298,67 @@ describe('OTP sign-in', () => {
 
   it('rejects a badly formed phone number', async () => {
     await request(app).post('/api/v1/auth/otp/request').send({ phone: '12345' }).expect(400);
+  });
+
+  it('signs in a new number and gives the account the name supplied', async () => {
+    await plantOtp('+959987654321', '123456');
+
+    const res = await request(app)
+      .post('/api/v1/auth/otp/verify')
+      .set('x-client', 'mobile')
+      .send({ phone: '09987654321', code: '123456', name: 'Ma Thida' })
+      .expect(200);
+
+    expect(res.body.accessToken).toBeTruthy();
+    expect(res.body.refreshToken).toBeTruthy();
+    expect(res.body.user).toMatchObject({
+      name: 'Ma Thida',
+      phone: '+959987654321',
+      roles: ['SEEKER'],
+      // Holding the handset is the verification.
+      isVerified: true,
+    });
+  });
+
+  it('signs in an existing account without touching its name', async () => {
+    await createUser('known@example.com', ['SEEKER', 'OWNER'], { phone: '+959555666777' });
+    await plantOtp('+959555666777', '654321');
+
+    const res = await request(app)
+      .post('/api/v1/auth/otp/verify')
+      .set('x-client', 'mobile')
+      .send({ phone: '09555666777', code: '654321', name: 'Someone Else' })
+      .expect(200);
+
+    expect(res.body.user.name).not.toBe('Someone Else');
+    expect(res.body.user.roles).toContain('OWNER');
+    expect(await prisma.user.count({ where: { phone: '+959555666777' } })).toBe(1);
+  });
+
+  it('will not spend a code twice', async () => {
+    await plantOtp('+959987654321', '123456');
+    const body = { phone: '09987654321', code: '123456' };
+
+    await request(app).post('/api/v1/auth/otp/verify').set('x-client', 'mobile').send(body).expect(200);
+    await request(app).post('/api/v1/auth/otp/verify').set('x-client', 'mobile').send(body).expect(400);
+  });
+
+  it('sends nothing while a fresh code is outstanding', async () => {
+    await request(app).post('/api/v1/auth/otp/request').send({ phone: '09987654321' }).expect(202);
+    await request(app).post('/api/v1/auth/otp/request').send({ phone: '09987654321' }).expect(202);
+
+    expect(await prisma.otpCode.count({ where: { phone: '+959987654321' } })).toBe(1);
+  });
+
+  it('sends again once the cooldown has passed', async () => {
+    await plantOtp(
+      '+959987654321',
+      '123456',
+      new Date(Date.now() - (OTP_RESEND_SECONDS + 1) * 1000),
+    );
+    await request(app).post('/api/v1/auth/otp/request').send({ phone: '09987654321' }).expect(202);
+
+    expect(await prisma.otpCode.count({ where: { phone: '+959987654321' } })).toBe(2);
   });
 });
 

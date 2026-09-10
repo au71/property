@@ -172,6 +172,21 @@ cookie; send `X-Client: mobile` and it comes back in the body for secure storage
 Refresh rotation includes **reuse detection**: replaying a token that has already
 been rotated revokes every session in its family, on the assumption that it leaked.
 
+**Phone sign-in (OTP).** `POST /auth/otp/request` always answers `202 { sent: true }`
+— identical for a registered number and an unknown one, so it cannot be used to
+test which numbers have accounts. Only the code's salted hash is stored, it lasts
+five minutes, and five wrong guesses burn it.
+
+A number with no account gets one on first successful verification, so the same
+two endpoints serve sign-up and sign-in.
+
+Requesting a code while a fresh one is still outstanding sends nothing
+(`OTP_RESEND_SECONDS`, 60). The per-IP limiter cannot help here — the requests
+that matter come from many addresses aimed at one handset — and every message
+costs money and lands on a stranger's phone. In development the code is written
+to the log by the SMS stand-in; production needs a real `SmsProvider`, and logs
+an error rather than silently dropping the message if none is configured.
+
 ## Testing
 
 ```bash

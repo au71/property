@@ -5,6 +5,14 @@ import { config } from '../config/index.js';
 export const OTP_TTL_MINUTES = 5;
 export const OTP_MAX_ATTEMPTS = 5;
 
+/**
+ * How long a freshly sent code stays the only one. Without this, "resend" is an
+ * SMS bomb aimed at whatever number the attacker types: the per-IP limiter does
+ * not help when the requests come from many IPs, and every message costs money
+ * and lands on a stranger's handset.
+ */
+export const OTP_RESEND_SECONDS = 60;
+
 export function generateOtpCode(): string {
   return randomInt(0, 1_000_000).toString().padStart(6, '0');
 }

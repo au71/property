@@ -35,7 +35,7 @@ git push git@github.com:<org>/property-api.git api-main:main
 ```bash
 # 1. API
 cd api && cp .env.example .env && npm install
-npm run db:migrate && npm run db:seed && npm run dev     # :4000
+npm run db:setup && npm run db:seed && npm run dev       # :4000
 
 # 2. Web
 cd ../app && cp .env.example .env.local && npm install

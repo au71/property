@@ -16,7 +16,7 @@ Express 5 · TypeScript · Prisma 7 · SQLite · Zod
 ```bash
 cp .env.example .env      # JWT_SECRET must be at least 32 characters
 npm install               # runs `prisma generate` via postinstall
-npm run db:migrate        # creates prisma/dev.db and applies migrations
+npm run db:setup          # creates prisma/dev.db and applies migrations
 npm run db:seed           # ~300 listings, users for every role, generated images
 npm run dev               # http://localhost:4000
 ```
@@ -42,7 +42,8 @@ Every seeded account uses the password **`Password123!`**:
 | `npm start` | Run the compiled server |
 | `npm test` | Vitest — unit plus integration against a real SQLite file |
 | `npm run typecheck` / `lint` / `format` | tsc, ESLint, Prettier |
-| `npm run db:migrate:new -- --name x` | **Use instead of `prisma migrate dev`** (see below) |
+| `npm run db:setup` | Apply migrations (this is `migrate deploy`, and it is what you want) |
+| `npm run db:migrate:new -- --name x` | Create a new migration. **Never run `prisma migrate dev`** (see below) |
 | `npm run db:reset` | Drop, migrate, reseed |
 | `npm run db:check` | CI guard on the search index |
 | `npm run openapi` | Regenerate `openapi.json` from the Zod schemas |
@@ -61,7 +62,12 @@ Every seeded account uses the password **`Password123!`**:
   tag currently points at an 8.0 release candidate, so a caret range would drag
   in a prerelease.
 
-### Never run a bare `prisma migrate dev`
+### Never run `prisma migrate dev`
+
+There is deliberately no `db:migrate` script, because the obvious name for it
+would be a trap. Use `db:setup` to apply migrations and `db:migrate:new` to
+create one.
+
 
 Full-text search uses an FTS5 virtual table (`listing_fts`) plus triggers, created
 by a hand-written migration. Virtual tables cannot be expressed in

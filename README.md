@@ -32,6 +32,17 @@ git push git@github.com:<org>/property-api.git api-main:main
 
 ## Running the whole thing
 
+The short way, once you have Node 22:
+
+```bash
+git clone https://github.com/au71/property.git
+cd property
+./start.sh
+```
+
+That sets up whatever is not set up yet, starts both servers, and prints the
+sign-in details. Ctrl+C stops both. Or do it by hand:
+
 ```bash
 # 1. API
 cd api && cp .env.example .env && npm install

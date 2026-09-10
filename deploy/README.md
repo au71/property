@@ -10,16 +10,71 @@ The database and the uploaded photos are files, and they want to stay files.
 
 ---
 
-## First time
+## What you need before you start
 
-You need a fresh Debian 12 or Ubuntu 24.04 server, and a domain whose A record
-already points at its IP — Caddy cannot get a certificate before DNS resolves.
+Two things you have to buy. Together they cost roughly **$6–13 a month plus
+$10–15 a year**.
+
+### 1. A server (VPS)
+
+A Linux machine rented by the month. Any of these work; pick **Singapore** as the
+region, it is the nearest major location to Myanmar.
+
+| Provider | Smallest sensible plan | Cost |
+|---|---|---|
+| Hetzner | CX22 — 2 vCPU, 4 GB | ~€4.50/mo |
+| DigitalOcean | Basic droplet — 1 vCPU, 2 GB | $6/mo |
+| Vultr | Regular — 1 vCPU, 2 GB | $6/mo |
+
+When you create it, choose **Debian 12** or **Ubuntu 24.04**. Add your SSH key if
+the provider offers it — otherwise it emails you a root password.
+
+2 GB of RAM is enough. The Next.js build is the heaviest moment; if it ever gets
+killed mid-build, that is the reason, and 4 GB fixes it.
+
+### 2. A domain name
+
+From Namecheap, Porkbun or Cloudflare, around $10–15/year. You need one because
+Caddy gets a real HTTPS certificate, and certificates are issued for domains, not
+IP addresses.
+
+Once you have both, add a **DNS A record** pointing your domain at the server's
+IP address:
+
+```
+Type   Name   Value
+A      @      203.0.113.42        <- your server's IP
+```
+
+Check it has taken effect before going further — this can take minutes to an
+hour:
 
 ```bash
-ssh root@your-server
-curl -fsSLO https://raw.githubusercontent.com/au71/property/main/deploy/bootstrap.sh
-DOMAIN=property.example.com bash bootstrap.sh
+dig +short property.example.com
+# should print your server's IP
 ```
+
+**Caddy cannot get a certificate until this resolves.** Running the bootstrap
+early is not harmful, but it will fail at the TLS step.
+
+## First time
+
+From **your own machine** — Terminal on macOS or Linux, PowerShell on Windows 10
+or later — connect to the server:
+
+```bash
+ssh root@203.0.113.42          # your server's IP
+```
+
+Your prompt changes to the server. Everything after this runs **there**, not on
+your laptop:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/au71/property/main/deploy/bootstrap.sh
+DOMAIN=property.example.com bash bootstrap.sh     # your domain
+```
+
+It takes about five minutes, most of it building the web app.
 
 The script is idempotent — re-running it is safe and is the intended way to
 recover from a half-finished first run.

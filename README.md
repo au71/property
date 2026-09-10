@@ -92,17 +92,22 @@ Two things this environment blocked, both documented where they matter:
 
 ## Deploying
 
-One small VPS runs everything behind Caddy. See **[deploy/README.md](deploy/README.md)**
-for the runbook; the short version is:
+One small VPS runs everything behind Caddy. You need a rented server (~$6/mo,
+Singapore) and a domain (~$12/yr); **[deploy/README.md](deploy/README.md)** walks
+through getting both. Once the domain's A record points at the server:
 
 ```bash
-ssh root@your-server
+ssh root@your-server-ip        # from your own terminal
+# then, on the server:
 curl -fsSLO https://raw.githubusercontent.com/au71/property/main/deploy/bootstrap.sh
 DOMAIN=property.example.com bash bootstrap.sh
 ```
 
 Then `sudo -u property /srv/property/deploy/deploy.sh` for every deploy after
 that.
+
+**To try it without spending anything**, run it locally instead — see Running the
+whole thing above. Everything works on a laptop except the public URL.
 
 SQLite needs a persistent disk and a single writer, so the API cannot go
 serverless. Caddy serves both apps from one domain by path, which means the

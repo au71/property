@@ -120,6 +120,14 @@ export default async function MyListingsPage() {
                   {formatPrice(listing.price ?? {}, locale)}
                 </p>
 
+                {/* Without this a rejected listing just said "Needs changes"
+                    with no hint of what to change. */}
+                {listing.status === 'REJECTED' && listing.rejectionReason && (
+                  <p className="mt-1.5 rounded-md border border-destructive/40 bg-destructive/5 px-2.5 py-1.5 text-xs">
+                    {listing.rejectionReason}
+                  </p>
+                )}
+
                 <ListingActions
                   listingId={listing.id}
                   status={listing.status}

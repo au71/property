@@ -392,6 +392,23 @@ describe('contact details', () => {
     });
   });
 
+  it('gives the owner their own number, so an edit form can prefill it', async () => {
+    const res = await request(app)
+      .get(`/api/v1/listings/${listingId}`)
+      .set(auth(ownerToken))
+      .expect(200);
+    expect(res.body.contact.phone).toBe('09123456789');
+  });
+
+  it('still hides it from a signed-in stranger', async () => {
+    const res = await request(app)
+      .get(`/api/v1/listings/${listingId}`)
+      .set(auth(otherToken))
+      .expect(200);
+    expect(res.body.contact.phone).toBeUndefined();
+    expect(JSON.stringify(res.body)).not.toContain('09123456789');
+  });
+
   it('returns the number from the dedicated endpoint', async () => {
     const res = await request(app).get(`/api/v1/listings/${listingId}/contact`).expect(200);
     expect(res.body.phone).toBe('09123456789');

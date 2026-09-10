@@ -463,3 +463,46 @@ describe('my listings', () => {
     expect(res.body.counts).toEqual({ PUBLISHED: 1, DRAFT: 1 });
   });
 });
+
+describe('rejection reasons', () => {
+  it('shows the reason on the seller’s own dashboard', async () => {
+    const listing = await createListing(t, ownerId, {
+      status: 'REJECTED',
+      publishedAt: null,
+      rejectionReason: 'The photographs are too blurred to publish.',
+    });
+
+    const res = await request(app).get('/api/v1/me/listings').set(auth(ownerToken)).expect(200);
+    const found = res.body.data.find((l: { id: string }) => l.id === listing.id);
+    expect(found.rejectionReason).toBe('The photographs are too blurred to publish.');
+  });
+
+  it('never exposes a rejection reason through public search', async () => {
+    await createListing(t, ownerId, {
+      status: 'REJECTED',
+      publishedAt: null,
+      rejectionReason: 'Suspected duplicate of an existing listing.',
+    });
+    await createListing(t, ownerId, { status: 'PUBLISHED' });
+
+    const res = await request(app).get('/api/v1/listings').expect(200);
+    expect(JSON.stringify(res.body)).not.toContain('Suspected duplicate');
+    // Published listings carry no reason at all.
+    for (const l of res.body.data) expect(l.rejectionReason).toBeNull();
+  });
+
+  it('clears the reason when the listing is approved', async () => {
+    const listing = await createListing(t, ownerId, {
+      status: 'PENDING_REVIEW',
+      publishedAt: null,
+      rejectionReason: 'An earlier round of feedback.',
+    });
+    await request(app)
+      .post(`/api/v1/admin/listings/${listing.id}/approve`)
+      .set(auth(staffToken))
+      .expect(200);
+
+    const row = await prisma.listing.findUnique({ where: { id: listing.id } });
+    expect(row?.rejectionReason).toBeNull();
+  });
+});

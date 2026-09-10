@@ -95,6 +95,10 @@ export function toListingSummary(listing: Record<string, unknown>) {
     isFeatured: listing['isFeatured'],
     publishedAt: listing['publishedAt'],
     viewCount: listing['viewCount'],
+    // The seller's own dashboard needs this to say what a reviewer asked for.
+    // It is safe in a shared summary because only PUBLISHED listings reach
+    // public search, and approving clears the reason — asserted by a test.
+    rejectionReason: listing['rejectionReason'] ?? null,
     ...pick(listing, ['bedrooms', 'bathrooms', 'floorAreaSqft', 'landAreaSqft']),
   };
 }
@@ -166,13 +170,21 @@ export function toListingDetail(listing: Record<string, unknown>, actor: Actor |
 
     contact: {
       name: listing['contactName'],
-      // Deliberately no phone number. A client component receiving it as a
-      // prop would have it serialised into the server-rendered payload, so a
-      // "reveal" button in the UI would be decoration while scrapers read the
-      // number straight out of the HTML. Numbers come from
+      // No phone number for a public viewer. A client component receiving it as
+      // a prop would have it serialised into the server-rendered payload, so a
+      // "reveal" button would be decoration while scrapers read the number
+      // straight out of the HTML. Public callers use
       // GET /listings/:id/contact instead: one rate-limited request per reveal.
       hasPhone: Boolean(listing['contactPhone']),
       hasViber: Boolean(listing['contactViber']),
+      // Whoever can edit the listing gets the real values, because an edit form
+      // has to prefill them — and it is their own number anyway.
+      ...(ownerVisible
+        ? {
+            phone: listing['contactPhone'],
+            viber: listing['contactViber'] ?? null,
+          }
+        : {}),
     },
 
     owner: listing['owner'] ?? null,

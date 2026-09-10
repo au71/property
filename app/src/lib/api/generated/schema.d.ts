@@ -907,6 +907,7 @@ export interface paths {
                                 bathrooms?: number;
                                 floorAreaSqft?: number;
                                 landAreaSqft?: number;
+                                rejectionReason?: string | null;
                             }[];
                             page?: {
                                 limit?: number;
@@ -1077,6 +1078,7 @@ export interface paths {
                             bathrooms?: number;
                             floorAreaSqft?: number;
                             landAreaSqft?: number;
+                            rejectionReason?: string | null;
                             description: string;
                             address?: string | null;
                             addressHidden: boolean;
@@ -1097,11 +1099,13 @@ export interface paths {
                                 height?: number;
                                 isCover?: boolean;
                             }[];
-                            /** @description Contact name only. The phone number is not included here — fetch it from GET /listings/{id}/contact when the viewer asks for it. */
+                            /** @description For a public viewer this is the contact name only — fetch the number from GET /listings/{id}/contact when they ask for it. The listing’s own account and staff additionally get phone and viber, so an edit form can prefill them. */
                             contact: {
                                 name: string;
                                 hasPhone: boolean;
                                 hasViber: boolean;
+                                phone?: string;
+                                viber?: string | null;
                             };
                             enquiryCount?: number;
                             propertyOwner?: {
@@ -1115,7 +1119,6 @@ export interface paths {
                             createdAt?: string;
                             /** Format: date-time */
                             updatedAt?: string;
-                            rejectionReason?: string | null;
                             owner?: {
                                 id?: string;
                                 name?: string;
@@ -1288,6 +1291,7 @@ export interface paths {
                             bathrooms?: number;
                             floorAreaSqft?: number;
                             landAreaSqft?: number;
+                            rejectionReason?: string | null;
                             description: string;
                             address?: string | null;
                             addressHidden: boolean;
@@ -1308,11 +1312,13 @@ export interface paths {
                                 height?: number;
                                 isCover?: boolean;
                             }[];
-                            /** @description Contact name only. The phone number is not included here — fetch it from GET /listings/{id}/contact when the viewer asks for it. */
+                            /** @description For a public viewer this is the contact name only — fetch the number from GET /listings/{id}/contact when they ask for it. The listing’s own account and staff additionally get phone and viber, so an edit form can prefill them. */
                             contact: {
                                 name: string;
                                 hasPhone: boolean;
                                 hasViber: boolean;
+                                phone?: string;
+                                viber?: string | null;
                             };
                             enquiryCount?: number;
                             propertyOwner?: {
@@ -1326,7 +1332,6 @@ export interface paths {
                             createdAt?: string;
                             /** Format: date-time */
                             updatedAt?: string;
-                            rejectionReason?: string | null;
                             owner?: {
                                 id?: string;
                                 name?: string;
@@ -1576,6 +1581,7 @@ export interface paths {
                             bathrooms?: number;
                             floorAreaSqft?: number;
                             landAreaSqft?: number;
+                            rejectionReason?: string | null;
                             description: string;
                             address?: string | null;
                             addressHidden: boolean;
@@ -1596,11 +1602,13 @@ export interface paths {
                                 height?: number;
                                 isCover?: boolean;
                             }[];
-                            /** @description Contact name only. The phone number is not included here — fetch it from GET /listings/{id}/contact when the viewer asks for it. */
+                            /** @description For a public viewer this is the contact name only — fetch the number from GET /listings/{id}/contact when they ask for it. The listing’s own account and staff additionally get phone and viber, so an edit form can prefill them. */
                             contact: {
                                 name: string;
                                 hasPhone: boolean;
                                 hasViber: boolean;
+                                phone?: string;
+                                viber?: string | null;
                             };
                             enquiryCount?: number;
                             propertyOwner?: {
@@ -1614,7 +1622,6 @@ export interface paths {
                             createdAt?: string;
                             /** Format: date-time */
                             updatedAt?: string;
-                            rejectionReason?: string | null;
                             owner?: {
                                 id?: string;
                                 name?: string;
@@ -1784,6 +1791,7 @@ export interface paths {
                                 bathrooms?: number;
                                 floorAreaSqft?: number;
                                 landAreaSqft?: number;
+                                rejectionReason?: string | null;
                             }[];
                         };
                     };
@@ -2007,6 +2015,7 @@ export interface paths {
                             bathrooms?: number;
                             floorAreaSqft?: number;
                             landAreaSqft?: number;
+                            rejectionReason?: string | null;
                             description: string;
                             address?: string | null;
                             addressHidden: boolean;
@@ -2027,11 +2036,13 @@ export interface paths {
                                 height?: number;
                                 isCover?: boolean;
                             }[];
-                            /** @description Contact name only. The phone number is not included here — fetch it from GET /listings/{id}/contact when the viewer asks for it. */
+                            /** @description For a public viewer this is the contact name only — fetch the number from GET /listings/{id}/contact when they ask for it. The listing’s own account and staff additionally get phone and viber, so an edit form can prefill them. */
                             contact: {
                                 name: string;
                                 hasPhone: boolean;
                                 hasViber: boolean;
+                                phone?: string;
+                                viber?: string | null;
                             };
                             enquiryCount?: number;
                             propertyOwner?: {
@@ -2045,7 +2056,6 @@ export interface paths {
                             createdAt?: string;
                             /** Format: date-time */
                             updatedAt?: string;
-                            rejectionReason?: string | null;
                             owner?: {
                                 id?: string;
                                 name?: string;
@@ -3240,6 +3250,7 @@ export interface paths {
                                 bathrooms?: number;
                                 floorAreaSqft?: number;
                                 landAreaSqft?: number;
+                                rejectionReason?: string | null;
                             }[];
                         };
                     };
@@ -4461,6 +4472,7 @@ export interface components {
             bathrooms?: number;
             floorAreaSqft?: number;
             landAreaSqft?: number;
+            rejectionReason?: string | null;
         };
         ListingDetail: {
             id: string;
@@ -4517,6 +4529,7 @@ export interface components {
             bathrooms?: number;
             floorAreaSqft?: number;
             landAreaSqft?: number;
+            rejectionReason?: string | null;
             description: string;
             address?: string | null;
             addressHidden: boolean;
@@ -4537,11 +4550,13 @@ export interface components {
                 height?: number;
                 isCover?: boolean;
             }[];
-            /** @description Contact name only. The phone number is not included here — fetch it from GET /listings/{id}/contact when the viewer asks for it. */
+            /** @description For a public viewer this is the contact name only — fetch the number from GET /listings/{id}/contact when they ask for it. The listing’s own account and staff additionally get phone and viber, so an edit form can prefill them. */
             contact: {
                 name: string;
                 hasPhone: boolean;
                 hasViber: boolean;
+                phone?: string;
+                viber?: string | null;
             };
             enquiryCount?: number;
             propertyOwner?: {
@@ -4555,7 +4570,6 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
-            rejectionReason?: string | null;
             owner?: {
                 id?: string;
                 name?: string;

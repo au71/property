@@ -136,6 +136,7 @@ const LISTING_SUMMARY: JsonSchema = {
     bathrooms: { type: 'integer' },
     floorAreaSqft: { type: 'integer' },
     landAreaSqft: { type: 'integer' },
+    rejectionReason: { type: ['string', 'null'] },
   },
 };
 
@@ -174,13 +175,16 @@ const LISTING_DETAIL: JsonSchema = {
     contact: {
       type: 'object',
       description:
-        'Contact name only. The phone number is not included here — fetch it from ' +
-        'GET /listings/{id}/contact when the viewer asks for it.',
+        'For a public viewer this is the contact name only — fetch the number from ' +
+        'GET /listings/{id}/contact when they ask for it. The listing\u2019s own account ' +
+        'and staff additionally get phone and viber, so an edit form can prefill them.',
       required: ['name', 'hasPhone', 'hasViber'],
       properties: {
         name: { type: 'string' },
         hasPhone: { type: 'boolean' },
         hasViber: { type: 'boolean' },
+        phone: { type: 'string' },
+        viber: { type: ['string', 'null'] },
       },
     },
     enquiryCount: { type: 'integer' },

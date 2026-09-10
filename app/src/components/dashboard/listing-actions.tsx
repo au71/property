@@ -1,6 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { IconPencil } from '@tabler/icons-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -11,6 +13,9 @@ interface Props {
   status: string;
   dealType: string;
 }
+
+/** Statuses whose listings the owner may still edit, matching the API's rule. */
+const EDITABLE = ['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'REJECTED', 'EXPIRED'];
 
 /**
  * Which actions an owner may take follows the API's own state machine, so the
@@ -69,6 +74,14 @@ export function ListingActions({ listingId, status, dealType }: Props) {
 
   return (
     <div className="mt-2 flex flex-wrap gap-2">
+      {EDITABLE.includes(status) && (
+        <Button size="sm" variant="outline" asChild>
+          <Link href={`/dashboard/listings/${listingId}/edit`}>
+            <IconPencil />
+            {status === 'REJECTED' ? 'Fix and resubmit' : 'Edit'}
+          </Link>
+        </Button>
+      )}
       {buttons.map((button) => (
         <Button
           key={button.key}

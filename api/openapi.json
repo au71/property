@@ -311,6 +311,12 @@
           },
           "landAreaSqft": {
             "type": "integer"
+          },
+          "rejectionReason": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -551,6 +557,12 @@
           "landAreaSqft": {
             "type": "integer"
           },
+          "rejectionReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "description": {
             "type": "string"
           },
@@ -621,7 +633,7 @@
           },
           "contact": {
             "type": "object",
-            "description": "Contact name only. The phone number is not included here — fetch it from GET /listings/{id}/contact when the viewer asks for it.",
+            "description": "For a public viewer this is the contact name only — fetch the number from GET /listings/{id}/contact when they ask for it. The listing’s own account and staff additionally get phone and viber, so an edit form can prefill them.",
             "required": [
               "name",
               "hasPhone",
@@ -636,6 +648,15 @@
               },
               "hasViber": {
                 "type": "boolean"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "viber": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             }
           },
@@ -679,12 +700,6 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
-          },
-          "rejectionReason": {
-            "type": [
-              "string",
-              "null"
-            ]
           },
           "owner": {
             "type": [
@@ -2671,6 +2686,12 @@
                           },
                           "landAreaSqft": {
                             "type": "integer"
+                          },
+                          "rejectionReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           }
                         }
                       }
@@ -3261,6 +3282,12 @@
                     "landAreaSqft": {
                       "type": "integer"
                     },
+                    "rejectionReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "description": {
                       "type": "string"
                     },
@@ -3331,7 +3358,7 @@
                     },
                     "contact": {
                       "type": "object",
-                      "description": "Contact name only. The phone number is not included here — fetch it from GET /listings/{id}/contact when the viewer asks for it.",
+                      "description": "For a public viewer this is the contact name only — fetch the number from GET /listings/{id}/contact when they ask for it. The listing’s own account and staff additionally get phone and viber, so an edit form can prefill them.",
                       "required": [
                         "name",
                         "hasPhone",
@@ -3346,6 +3373,15 @@
                         },
                         "hasViber": {
                           "type": "boolean"
+                        },
+                        "phone": {
+                          "type": "string"
+                        },
+                        "viber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       }
                     },
@@ -3389,12 +3425,6 @@
                     "updatedAt": {
                       "type": "string",
                       "format": "date-time"
-                    },
-                    "rejectionReason": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
                     },
                     "owner": {
                       "type": [
@@ -3880,6 +3910,12 @@
                     "landAreaSqft": {
                       "type": "integer"
                     },
+                    "rejectionReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "description": {
                       "type": "string"
                     },
@@ -3950,7 +3986,7 @@
                     },
                     "contact": {
                       "type": "object",
-                      "description": "Contact name only. The phone number is not included here — fetch it from GET /listings/{id}/contact when the viewer asks for it.",
+                      "description": "For a public viewer this is the contact name only — fetch the number from GET /listings/{id}/contact when they ask for it. The listing’s own account and staff additionally get phone and viber, so an edit form can prefill them.",
                       "required": [
                         "name",
                         "hasPhone",
@@ -3965,6 +4001,15 @@
                         },
                         "hasViber": {
                           "type": "boolean"
+                        },
+                        "phone": {
+                          "type": "string"
+                        },
+                        "viber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       }
                     },
@@ -4008,12 +4053,6 @@
                     "updatedAt": {
                       "type": "string",
                       "format": "date-time"
-                    },
-                    "rejectionReason": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
                     },
                     "owner": {
                       "type": [
@@ -4607,6 +4646,12 @@
                     "landAreaSqft": {
                       "type": "integer"
                     },
+                    "rejectionReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "description": {
                       "type": "string"
                     },
@@ -4677,7 +4722,7 @@
                     },
                     "contact": {
                       "type": "object",
-                      "description": "Contact name only. The phone number is not included here — fetch it from GET /listings/{id}/contact when the viewer asks for it.",
+                      "description": "For a public viewer this is the contact name only — fetch the number from GET /listings/{id}/contact when they ask for it. The listing’s own account and staff additionally get phone and viber, so an edit form can prefill them.",
                       "required": [
                         "name",
                         "hasPhone",
@@ -4692,6 +4737,15 @@
                         },
                         "hasViber": {
                           "type": "boolean"
+                        },
+                        "phone": {
+                          "type": "string"
+                        },
+                        "viber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       }
                     },
@@ -4735,12 +4789,6 @@
                     "updatedAt": {
                       "type": "string",
                       "format": "date-time"
-                    },
-                    "rejectionReason": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
                     },
                     "owner": {
                       "type": [
@@ -5375,6 +5423,12 @@
                           },
                           "landAreaSqft": {
                             "type": "integer"
+                          },
+                          "rejectionReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           }
                         }
                       }
@@ -5815,6 +5869,12 @@
                     "landAreaSqft": {
                       "type": "integer"
                     },
+                    "rejectionReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "description": {
                       "type": "string"
                     },
@@ -5885,7 +5945,7 @@
                     },
                     "contact": {
                       "type": "object",
-                      "description": "Contact name only. The phone number is not included here — fetch it from GET /listings/{id}/contact when the viewer asks for it.",
+                      "description": "For a public viewer this is the contact name only — fetch the number from GET /listings/{id}/contact when they ask for it. The listing’s own account and staff additionally get phone and viber, so an edit form can prefill them.",
                       "required": [
                         "name",
                         "hasPhone",
@@ -5900,6 +5960,15 @@
                         },
                         "hasViber": {
                           "type": "boolean"
+                        },
+                        "phone": {
+                          "type": "string"
+                        },
+                        "viber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       }
                     },
@@ -5943,12 +6012,6 @@
                     "updatedAt": {
                       "type": "string",
                       "format": "date-time"
-                    },
-                    "rejectionReason": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
                     },
                     "owner": {
                       "type": [
@@ -8243,6 +8306,12 @@
                           },
                           "landAreaSqft": {
                             "type": "integer"
+                          },
+                          "rejectionReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           }
                         }
                       }

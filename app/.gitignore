@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the template. Without this, a fresh clone has no record of which
+# environment variables the app needs, and `.env*` from create-next-app
+# swallows it silently.
+!.env.example
 
 # vercel
 .vercel

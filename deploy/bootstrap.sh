@@ -9,14 +9,14 @@
 set -euo pipefail
 
 DOMAIN="${DOMAIN:-}"
-# SSH, not HTTPS: the repository is private, so an anonymous HTTPS clone gets a
-# 404 that looks like "repository not found". A read-only deploy key is the
-# right credential for one server — it cannot push, and it is scoped to this
-# repository alone, unlike a personal access token.
-REPO="${REPO:-git@github.com:au71/property.git}"
+# The repository is public, so a plain HTTPS clone needs no credential. If it is
+# ever made private this falls back to generating a read-only deploy key — see
+# the "Repository access" step below.
+REPO="${REPO:-https://github.com/au71/property.git}"
+SSH_REPO="${SSH_REPO:-git@github.com:au71/property.git}"
 BRANCH="${BRANCH:-main}"
 APP_ROOT=/srv/property
-# The key lives with the `property` user, because that is the account that runs
+# Any key lives with the `property` user, because that is the account that runs
 # every deploy after this one. A key under /root would work exactly once.
 PROPERTY_HOME=/home/property
 DEPLOY_KEY="$PROPERTY_HOME/.ssh/property_deploy"
@@ -63,35 +63,42 @@ mkdir -p "$APP_ROOT" /srv/property/data/uploads /srv/property/backups /var/log/c
 chown -R property:property /srv/property
 chown -R caddy:caddy /var/log/caddy
 
-echo "==> Deploy key"
-install -d -m 700 -o property -g property "$PROPERTY_HOME/.ssh"
-if [[ ! -f "$DEPLOY_KEY" ]]; then
-  sudo -u property ssh-keygen -t ed25519 -N "" \
-    -C "property-deploy@$(hostname)" -f "$DEPLOY_KEY" >/dev/null
-fi
-if ! grep -q "property_deploy" "$PROPERTY_HOME/.ssh/config" 2>/dev/null; then
-  cat >> "$PROPERTY_HOME/.ssh/config" <<SSHEOF
+echo "==> Repository access"
+# A public repository clones with no credential at all. Only if that fails does
+# this fall back to a deploy key, so the common path stays a single run.
+if git ls-remote --exit-code "$REPO" "refs/heads/$BRANCH" >/dev/null 2>&1; then
+  echo "    public clone over HTTPS, no credential needed"
+else
+  echo "    HTTPS clone refused; falling back to a deploy key"
+  REPO="$SSH_REPO"
+  install -d -m 700 -o property -g property "$PROPERTY_HOME/.ssh"
+  if [[ ! -f "$DEPLOY_KEY" ]]; then
+    sudo -u property ssh-keygen -t ed25519 -N "" \
+      -C "property-deploy@$(hostname)" -f "$DEPLOY_KEY" >/dev/null
+  fi
+  if ! grep -q "property_deploy" "$PROPERTY_HOME/.ssh/config" 2>/dev/null; then
+    cat >> "$PROPERTY_HOME/.ssh/config" <<SSHEOF
 Host github.com
   IdentityFile $DEPLOY_KEY
   IdentitiesOnly yes
 SSHEOF
-fi
-ssh-keyscan -t ed25519 github.com >> "$PROPERTY_HOME/.ssh/known_hosts" 2>/dev/null
-sort -u -o "$PROPERTY_HOME/.ssh/known_hosts" "$PROPERTY_HOME/.ssh/known_hosts"
-chown -R property:property "$PROPERTY_HOME/.ssh"
-chmod 600 "$PROPERTY_HOME/.ssh/config" "$PROPERTY_HOME/.ssh/known_hosts"
+  fi
+  ssh-keyscan -t ed25519 github.com >> "$PROPERTY_HOME/.ssh/known_hosts" 2>/dev/null
+  sort -u -o "$PROPERTY_HOME/.ssh/known_hosts" "$PROPERTY_HOME/.ssh/known_hosts"
+  chown -R property:property "$PROPERTY_HOME/.ssh"
+  chmod 600 "$PROPERTY_HOME/.ssh/config" "$PROPERTY_HOME/.ssh/known_hosts"
 
-# Fail early and legibly rather than letting `git clone` produce a confusing
-# "repository not found" for what is really a missing credential.
-if ! sudo -u property ssh -o BatchMode=yes -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
-  cat <<KEYEOF
+  # Fail legibly rather than letting `git clone` report "repository not found"
+  # for what is really a missing credential.
+  if ! sudo -u property ssh -o BatchMode=yes -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+    cat <<KEYEOF
 
-This server cannot reach the repository yet. Add its deploy key:
+This server cannot reach the repository. Add its deploy key:
 
   https://github.com/au71/property/settings/keys/new
 
-  Title:       $(hostname)
-  Key:         (paste the line below)
+  Title:        $(hostname)
+  Key:          (paste the line below)
   Write access: leave UNCHECKED — deploys only ever read
 
 $(cat "$DEPLOY_KEY.pub")
@@ -99,7 +106,8 @@ $(cat "$DEPLOY_KEY.pub")
 Then run this script again. It is safe to re-run.
 
 KEYEOF
-  exit 1
+    exit 1
+  fi
 fi
 
 echo "==> Checkout"

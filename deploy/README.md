@@ -15,25 +15,26 @@ The database and the uploaded photos are files, and they want to stay files.
 You need a fresh Debian 12 or Ubuntu 24.04 server, and a domain whose A record
 already points at its IP — Caddy cannot get a certificate before DNS resolves.
 
-**The repository is private**, so there is no anonymous `curl` of the bootstrap
-script and no anonymous clone. Copy the script up from your own checkout:
-
 ```bash
-scp deploy/bootstrap.sh root@your-server:/root/
-ssh root@your-server 'DOMAIN=property.example.com bash /root/bootstrap.sh'
+ssh root@your-server
+curl -fsSLO https://raw.githubusercontent.com/au71/property/main/deploy/bootstrap.sh
+DOMAIN=property.example.com bash bootstrap.sh
 ```
 
-The first run stops and prints an SSH public key, because the server cannot
-read a private repository yet. Add it as a **read-only deploy key**:
+The script is idempotent — re-running it is safe and is the intended way to
+recover from a half-finished first run.
 
-> github.com/au71/property → Settings → Deploy keys → Add deploy key
-> Paste the key. **Leave "Allow write access" unchecked** — a deploy only reads.
+### If you make the repository private again
 
-Then run the same command again. The script is idempotent; re-running is the
-intended flow, not a recovery step.
+The script notices: a public clone is tried first, and only if that is refused
+does it generate a **read-only deploy key**, print it, and stop with the page to
+paste it into.
 
-A deploy key beats a personal access token here: it is scoped to this one
-repository, it cannot push, and revoking it affects nothing else.
+> Settings → Deploy keys → Add deploy key.
+> **Leave "Allow write access" unchecked** — a deploy only ever reads.
+
+Then run it again. A deploy key beats a personal access token here: scoped to
+this one repository, cannot push, and revoking it affects nothing else.
 
 That installs Node 22 and Caddy, creates a `property` service account, clones the
 repo to `/srv/property`, generates a JWT secret, writes both `.env` files, builds
@@ -58,12 +59,6 @@ Finally, allow the deploy user to restart the services:
 sudo install -m 0440 -o root -g root /srv/property/deploy/sudoers.property /etc/sudoers.d/property
 sudo visudo -c
 ```
-
-### Default branch
-
-`main` must be the repository's default branch, or `bootstrap.sh` clones the
-wrong thing. Set it under
-**Settings → General → Default branch** if it is not already.
 
 ## Every deploy after that
 
@@ -187,7 +182,10 @@ sudo systemctl restart property-api
 
 ## Before you take real traffic
 
-- [ ] `make:admin` run, demo accounts deleted if you seeded them
+- [ ] `make:admin` run, demo accounts deleted if you seeded them.
+      The repository is public, so `Password123!` and every demo email are
+      world-readable. `SEED_DEMO=1` on a public-facing box hands anyone an
+      admin login.
 - [ ] Offsite backup enabled in `backup.sh`
 - [ ] `JWT_SECRET` backed up somewhere other than the server
 - [ ] A restore rehearsed at least once
